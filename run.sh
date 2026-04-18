@@ -23,8 +23,9 @@ cd backend
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
-uvicorn app.main:app --reload --port 8000 &
-python bot.py &
+# Используем python3 -m uvicorn для надежности
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+python3 bot.py &
 cd ..
 
 echo "📱 2. Запуск WhatsApp Bridge (Node.js)..."
@@ -34,13 +35,14 @@ cd ..
 
 echo "💻 3. Запуск Frontend (React Vite)..."
 cd frontend
-npm run dev &
+npm run dev -- --host 0.0.0.0 &
 cd ..
 
 echo "=========================================="
 echo "✅ Все сервисы запущены в фоне!"
-echo "➡️  Frontend: http://localhost:5173"
-echo "➡️  Backend: http://localhost:8000"
+echo "📡 Теперь вы можете открывать систему с ДРУГИХ устройств (телефона, планшета)!"
+echo "➡️  В браузере телефона введите: http://<IP-вашего-мака>:5173"
+echo "=========================================="
 echo "⚠️  Внимательно смотрите логи выше: скоро здесь появится QR-код для WhatsApp."
 echo "Нажмите [Ctrl+C] для одновременной остановки всех сервисов."
 echo "=========================================="

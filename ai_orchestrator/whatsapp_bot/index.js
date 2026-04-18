@@ -1,6 +1,9 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
+const express = require('express');
+const app = express();
+app.use(express.json());
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -129,3 +132,26 @@ process.on('uncaughtException', (err) => {
 });
 
 startClient();
+
+// Эндпоинт для отправки сообщений из Backend
+app.post('/send', async (req, res) => {
+    const { chatId, text } = req.body;
+    console.log(`[WA] Получен запрос на отправку в ${chatId}: ${text}`);
+    try {
+        if (!client || !client.info) {
+            console.warn('[WA] Попытка отправки до инициализации клиента');
+            return res.status(503).json({ error: 'WhatsApp client is not ready' });
+        }
+        await client.sendMessage(chatId, text);
+        console.log(`[WA] Сообщение успешно отправлено в ${chatId}`);
+        res.json({ status: 'success' });
+    } catch (error) {
+        console.error('[WA] Ошибка при отправке сообщения:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 WA Bridge Server готов и слушает на порту ${PORT}`);
+});
