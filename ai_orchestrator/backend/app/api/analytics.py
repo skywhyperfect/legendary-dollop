@@ -12,65 +12,57 @@ from app.api.bot_feed import _get_conn, _ensure_table
 
 router = APIRouter()
 
-def _get_stats() -> dict:
-    """Собирает статистику из orchestrator.db за последние 7 дней."""
+def _get_stats(date_from: str, date_to: str) -> dict:
+    """Собирает статистику из orchestrator.db за указанный период."""
     _ensure_table()
-    today = datetime.now().strftime("%Y-%m-%d")
-    week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
     try:
         conn = _get_conn()
 
         # Всего сообщений
         total_msgs = conn.execute(
-            "SELECT COUNT(*) FROM tg_messages WHERE date(created_at) >= ?", (week_ago,)
+            "SELECT COUNT(*) FROM tg_messages WHERE date(created_at) >= ? AND date(created_at) <= ?", (date_from, date_to)
         ).fetchone()[0]
 
         # По типам
         type_rows = conn.execute(
-            "SELECT parsed_type, COUNT(*) as cnt FROM tg_messages WHERE date(created_at) >= ? GROUP BY parsed_type",
-            (week_ago,)
+            "SELECT parsed_type, COUNT(*) as cnt FROM tg_messages WHERE date(created_at) >= ? AND date(created_at) <= ? GROUP BY parsed_type",
+            (date_from, date_to)
         ).fetchall()
         type_counts = {r[0]: r[1] for r in type_rows}
 
         # Свод питания
         food_rows = conn.execute(
             "SELECT food_class, SUM(food_count) as total FROM tg_messages "
-            "WHERE parsed_type='food' AND food_count IS NOT NULL AND date(created_at) >= ? GROUP BY food_class",
-            (week_ago,)
+            "WHERE parsed_type='food' AND food_count IS NOT NULL AND date(created_at) >= ? AND date(created_at) <= ? GROUP BY food_class",
+            (date_from, date_to)
         ).fetchall()
         food_data = {r[0]: r[1] for r in food_rows if r[0]}
         total_food = sum(food_data.values())
 
         # Задачи
-        tasks = conn.execute(
-            "SELECT COUNT(*) FROM task_reminders"
-        ).fetchone()[0]
-        tasks_done = conn.execute(
-            "SELECT COUNT(*) FROM task_reminders WHERE is_completed=1"
-        ).fetchone()[0]
-        tasks_accepted = conn.execute(
-            "SELECT COUNT(*) FROM task_reminders WHERE is_accepted=1 AND is_completed=0"
-        ).fetchone()[0]
+        tasks = conn.execute("SELECT COUNT(*) FROM task_reminders").fetchone()[0]
+        tasks_done = conn.execute("SELECT COUNT(*) FROM task_reminders WHERE is_completed=1").fetchone()[0]
+        tasks_accepted = conn.execute("SELECT COUNT(*) FROM task_reminders WHERE is_accepted=1 AND is_completed=0").fetchone()[0]
         tasks_pending = tasks - tasks_done - tasks_accepted
 
         # Инциденты с локациями
         incidents = conn.execute(
             "SELECT sender, text, location, created_at FROM tg_messages "
-            "WHERE parsed_type IN ('incident','medical') AND date(created_at) >= ? ORDER BY id DESC LIMIT 5",
-            (week_ago,)
+            "WHERE parsed_type IN ('incident','medical') AND date(created_at) >= ? AND date(created_at) <= ? ORDER BY id DESC LIMIT 5",
+            (date_from, date_to)
         ).fetchall()
         incidents_list = [{"sender": r[0], "text": r[1], "location": r[2], "time": r[3]} for r in incidents]
 
         # Отсутствия
         absences = conn.execute(
-            "SELECT COUNT(*) FROM tg_messages WHERE parsed_type='absence' AND date(created_at) >= ?",
-            (week_ago,)
+            "SELECT COUNT(*) FROM tg_messages WHERE parsed_type='absence' AND date(created_at) >= ? AND date(created_at) <= ?",
+            (date_from, date_to)
         ).fetchone()[0]
 
         conn.close()
         return {
-            "period": f"{week_ago} — {today}",
+            "period": f"{date_from} — {date_to}",
             "total_messages": total_msgs,
             "type_counts": type_counts,
             "total_food_portions": total_food,
@@ -224,13 +216,20 @@ def _generate_report_html(stats: dict, ai_summary: str) -> str:
 
 
 @router.get("/report")
-def generate_analytics_report():
-    """Генерирует HTML-отчёт с AI-анализом на основе реальных данных из БД."""
-    stats = _get_stats()
+def generate_analytics_report(
+    date_from: str = None,
+    date_to: str = None,
+):
+    """Генерирует HTML-отчёт с AI-анализом. Принимает date_from и date_to (YYYY-MM-DD)."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    if not date_to:
+        date_to = today
+    if not date_from:
+        # Дефолт — неделя
+        date_from = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    # Пробуем сгенерировать AI-саммари через OpenAI
+    stats = _get_stats(date_from, date_to)
     ai_summary = _generate_ai_summary(stats)
-
     html = _generate_report_html(stats, ai_summary)
     return {"html": html, "stats": stats}
 

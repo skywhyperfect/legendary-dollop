@@ -1926,20 +1926,43 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
 
 function GenerateReportButton() {
   const [loading, setLoading] = React.useState(false);
+  const [period, setPeriod] = React.useState<'week' | 'month' | 'quarter' | 'custom'>('week');
+  const today = new Date().toISOString().split('T')[0];
+  const [customFrom, setCustomFrom] = React.useState(today);
+  const [customTo, setCustomTo] = React.useState(today);
+
+  const getDateRange = () => {
+    const to = today;
+    if (period === 'week') {
+      const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+      return { from, to };
+    }
+    if (period === 'month') {
+      const from = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+      return { from, to };
+    }
+    if (period === 'quarter') {
+      const from = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+      return { from, to };
+    }
+    return { from: customFrom, to: customTo };
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
+    const { from, to } = getDateRange();
     try {
-      const res = await axios.get(`${API_BASE}/analytics/report`);
+      const res = await axios.get(`${API_BASE}/analytics/report`, {
+        params: { date_from: from, date_to: to }
+      });
       const html: string = res.data.html;
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const tab = window.open(url, '_blank');
       if (!tab) {
-        // popup blocked — скачиваем файлом
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Otchet_Pokoyo_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.html`;
+        link.download = `Otchet_${from}_${to}.html`;
         link.click();
       }
     } catch (e) {
@@ -1949,32 +1972,94 @@ function GenerateReportButton() {
     }
   };
 
+  const periodTabs = [
+    { key: 'week',    label: '7 дней' },
+    { key: 'month',   label: 'Месяц' },
+    { key: 'quarter', label: 'Квартал' },
+    { key: 'custom',  label: 'Период' },
+  ] as const;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+    <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-5">
-        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
-          <FileText size={30} />
+        <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+          <FileText size={26} />
         </div>
         <div>
           <div className="font-black text-xl text-slate-800">AI-Отчёт для директора</div>
-          <div className="text-slate-500 font-medium mt-1 text-sm">
-            Покойо соберёт данные за неделю, напишет аналитику и сформирует PDF-документ для печати.
+          <div className="text-slate-500 font-medium mt-0.5 text-sm">
+            Покойо соберёт данные, напишет аналитику и сформирует PDF-документ для печати.
           </div>
         </div>
       </div>
+
+      {/* Period Tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+        {periodTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setPeriod(tab.key)}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${
+              period === tab.key
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom Date Range */}
+      {period === 'custom' && (
+        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+          <div className="flex-1">
+            <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">С</div>
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo}
+              onChange={e => setCustomFrom(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="text-slate-300 font-black mt-5">→</div>
+          <div className="flex-1">
+            <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">По</div>
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom}
+              max={today}
+              onChange={e => setCustomTo(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Date range preview */}
+      {period !== 'custom' && (
+        <div className="text-xs font-bold text-slate-400 text-center">
+          {(() => { const {from, to} = getDateRange(); return `${from} — ${to}`; })()}
+        </div>
+      )}
+
+      {/* Generate Button */}
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shrink-0 ${
+        className={`w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg ${
           loading
             ? 'bg-slate-100 text-slate-400 cursor-wait'
             : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30 hover:-translate-y-0.5'
         }`}
       >
         {loading ? (
-          <><div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />AI генерирует...</>
+          <><div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />AI генерирует отчёт...</>
         ) : (
-          <><Download size={18} />Скачать отчёт PDF</>
+          <><Download size={18} />Сформировать и открыть PDF</>
         )}
       </button>
     </div>
