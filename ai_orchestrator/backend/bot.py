@@ -121,36 +121,72 @@ def get_incidents() -> list:
 def extract_food_info(text: str):
     """
     Извлекает класс и количество из текста.
-    Примеры: "1А - 25 детей", "2Б: 22 ребёнка, 3 болеют", "3В — 20"
+    Поддерживает fuzzy-форматы:
+      "1А - 25 детей", "2Б: 22 ребёнка, 3 болеют", "3В — 20",
+      "23 из 25", "все пришли кроме Алмаса", "1А: 24 (+2 опоздали)"
     """
-    # Ищем класс: 1А, 2Б, 3В, 4Г и т.д. (без \b, т.к. кириллица)
+    # Ищем класс: 1А, 2Б, 3В, 4Г и т.д.
     class_match = re.search(r"(\d+[АаБбВвГг])", text, re.IGNORECASE)
-    count_match = re.search(r"(\d+)\s*(детей|ребёнка|ребенка|человек|уч[её]ников|порций)", text, re.IGNORECASE)
     food_class = class_match.group(1).upper() if class_match else None
+    
+    # Паттерн 1: "25 детей", "22 ребёнка", "20 человек"
+    count_match = re.search(r"(\d+)\s*(детей|ребёнка|ребенка|человек|уч[её]ников|порций)", text, re.IGNORECASE)
+    
+    # Паттерн 2: "23 из 25" → берём первое число (присутствующих)
+    if not count_match:
+        ratio_match = re.search(r"(\d+)\s*из\s*(\d+)", text)
+        if ratio_match:
+            return food_class, int(ratio_match.group(1))
+    
+    # Паттерн 3: "все пришли" / "все на месте" (без числа)
+    if not count_match:
+        if re.search(r"все\s*(пришли|на месте|здесь|есть)", text, re.IGNORECASE):
+            return food_class, None  # Тип food, но без числа
+    
+    # Паттерн 4: "24 (+2 опоздали)" → 24
+    if not count_match:
+        paren_match = re.search(r"(\d+)\s*\(", text)
+        if paren_match:
+            return food_class, int(paren_match.group(1))
+    
     food_count = int(count_match.group(1)) if count_match else None
     return food_class, food_count
 
 def local_classify(text: str) -> dict:
     """
     Быстрая классификация без LLM (работает без API ключа).
+    Поддерживает fuzzy NLP для грязного ввода.
     Returns dict с type, urgency, summary.
     """
     t = text.lower()
     food_class, food_count = extract_food_info(text)
 
-    if food_class or food_count or any(w in t for w in ["детей", "ребёнок", "порций", "кухня", "столовая"]):
+    # Расширенное определение food-сообщений (fuzzy)
+    food_keywords = ["детей", "ребёнок", "порций", "кухня", "столовая", "пришли", "на месте", "из 25", "из 24", "из 23", "из 22", "из 20"]
+    if food_class or food_count or any(w in t for w in food_keywords):
+        # Извлекаем количество отсутствующих: "кроме Алмаса и Диаса" = 2
+        absent_names = re.findall(r"кроме\s+([А-ЯЁа-яё]+(?:\s+и\s+[А-ЯЁа-яё]+)*)", text, re.IGNORECASE)
+        absent_count = 0
+        if absent_names:
+            absent_count = absent_names[0].count(" и ") + 1
+        
+        sick_match = re.search(r"(\d+)\s*(болеют|отсутствуют|нет)", text, re.IGNORECASE)
+        sick_count = int(sick_match.group(1)) if sick_match else absent_count
+        
         summary = f"Явка: {food_count or '?'} чел." + (f" ({food_class})" if food_class else "")
+        if sick_count > 0:
+            summary += f", отсутствует: {sick_count}"
         return {"type": "food", "urgency": "low", "summary": summary,
                 "food_class": food_class, "food_count": food_count}
 
-    if any(w in t for w in ["заболел", "болеет", "не придёт", "не придет", "нетрудоспособ"]):
+    if any(w in t for w in ["заболел", "болеет", "не придёт", "не придет", "нетрудоспособ", "температур", "больничн"]):
         teacher = re.search(r"[А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+|[А-ЯЁ][а-яё]+", text)
         name = teacher.group(0) if teacher else "Учитель"
         return {"type": "absence", "urgency": "high",
                 "summary": f"Отсутствует: {name}. Требуется замена.",
                 "food_class": None, "food_count": None}
 
-    if any(w in t for w in ["сломал", "поломка", "не работает", "протечка", "авария", "драка", "конфликт"]):
+    if any(w in t for w in ["сломал", "поломка", "не работает", "протечка", "авария", "драка", "конфликт", "разбил", "упал"]):
         return {"type": "incident", "urgency": "high",
                 "summary": f"Инцидент: {text[:80]}",
                 "food_class": None, "food_count": None}

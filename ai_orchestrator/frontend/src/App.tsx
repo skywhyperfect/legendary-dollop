@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Send, Paperclip, CheckCircle2, AlertTriangle, Info, BookOpen, Activity, Command, Lock, User, CheckCircle, Users, Calendar, Play, QrCode, Zap, Shield, Rocket, Sparkles, ChevronRight, Brain, MessageSquare, Clock, ArrowRight, Check, FileText, Search, Quote, Printer, X, Download, Menu } from 'lucide-react';
+import { Mic, Send, Paperclip, CheckCircle2, AlertTriangle, Info, BookOpen, Activity, Command, Lock, User, CheckCircle, Users, Calendar, Play, QrCode, Zap, Shield, Rocket, Sparkles, ChevronRight, Brain, MessageSquare, Clock, ArrowRight, Check, FileText, Search, Quote, Printer, X, Download, Menu, BarChart3, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import { schoolLogoData as schoolLogo } from './assets/logoData';
 import pocoyoBranding from './assets/pocoyo_branding.png';
@@ -428,6 +428,7 @@ function Dashboard() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isGeneratingOrder, setIsGeneratingOrder] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   // Live Telegram feed
   const [botFeed, setBotFeed] = useState<any[]>([]);
@@ -492,19 +493,28 @@ const [dbTasks, setDbTasks] = useState<any[]>([
       lesson: 1, class: "3В", room: "302", teacher: "Аскар (Болеет)", subject: "Математика", 
       alert: true, replacement: "Смирнова Елена", 
       reasoning: "Свободное окно (1-й урок), профиль соответствует (матем. + нач. школа).", 
-      confidence: 98, status: "pending" 
+      confidence: 98, status: "pending",
+      rejected: [
+        { name: "Кусаинова А.", reason: "Занята на 1 уроке (ведёт 4Б)" },
+        { name: "Нурланов Т.", reason: "Профиль не совпадает (история, не математика)" }
+      ]
     },
     { 
       lesson: 2, class: "5А", room: "305", teacher: "Аскар (Болеет)", subject: "Алгебра", 
       alert: true, replacement: "Кусаинов А.", 
       reasoning: "Ведет в параллели 5-х классов, имеет опыт по данной теме (уравнения).", 
-      confidence: 92, status: "pending" 
+      confidence: 92, status: "pending",
+      rejected: [
+        { name: "Смирнова Е.", reason: "Уже заменяет на 1 уроке (3В)" },
+        { name: "Жанибеков М.", reason: "Превышение нагрузки (Прик. МОН №110 п.3)" }
+      ]
     },
     { 
       lesson: 3, class: "8А", room: "308", teacher: "Антон", subject: "Физика", 
       alert: false, replacement: "", 
       reasoning: "Замена не требуется.", 
-      confidence: 100, status: "ok" 
+      confidence: 100, status: "ok",
+      rejected: []
     }
   ]);
 
@@ -833,6 +843,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
           <MenuButton title="Делегат (Voice-to-Task)" desc="Реальная База Данных" icon={<CheckCircle2 />} active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} />
           <MenuButton title="Smart Substitution" desc="Анализ LLM: Замены" icon={<Calendar />} active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')} />
           <MenuButton title="Бюрократический RAG" desc="Проверка по приказам" icon={<BookOpen />} active={activeTab === 'rag'} onClick={() => setActiveTab('rag')} />
+          <MenuButton title="Аналитика" desc="Тренды и статистика" icon={<BarChart3 />} active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
         </div>
         <div className="p-4 border-t border-slate-100 w-[340px]">
           <button onClick={() => { localStorage.removeItem('auth_token'); window.location.reload(); }} className="w-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition font-bold text-sm p-3 text-center">Выйти из системы</button>
@@ -861,6 +872,25 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               {botFeed.length > 0 ? `LIVE: ${botFeed.length} сообщений` : 'Sync: Telegram / SQLite'}
             </div>
           </div>
+          <button
+            disabled={isDemoRunning}
+            onClick={async () => {
+              setIsDemoRunning(true);
+              setActiveTab('chat');
+              try {
+                await axios.post('http://localhost:8000/api/bot/demo-scenario');
+              } catch {}
+              setTimeout(() => setIsDemoRunning(false), 18000);
+            }}
+            className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest px-5 py-3 rounded-2xl shadow-sm border transition-all active:scale-95 ${
+              isDemoRunning
+                ? 'bg-amber-50 text-amber-600 border-amber-200 cursor-wait animate-pulse'
+                : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-violet-100'
+            }`}
+          >
+            <Rocket className="w-4 h-4" />
+            {isDemoRunning ? 'Демо идёт...' : '🎬 Live Demo'}
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-10 pb-10 space-y-8 z-10 scroll-smooth pt-6">
@@ -1253,18 +1283,35 @@ const [dbTasks, setDbTasks] = useState<any[]>([
 
                     {/* ---- ROW 3: AI Rationale + Confidence ---- */}
                     {s.alert && (
-                      <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-3 gap-8">
-                        <div className="col-span-2 flex items-start space-x-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                          <Brain className="w-6 h-6 text-blue-500 mt-1 shrink-0" />
-                          <div>
-                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">AI Rationale</div>
-                            <p className="text-sm font-bold text-slate-700 leading-relaxed italic">"{s.reasoning}"</p>
+                      <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
+                        <div className="grid grid-cols-3 gap-8">
+                          <div className="col-span-2 flex items-start space-x-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                            <Brain className="w-6 h-6 text-blue-500 mt-1 shrink-0" />
+                            <div>
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">AI Rationale</div>
+                              <p className="text-sm font-bold text-slate-700 leading-relaxed italic">"{s.reasoning}"</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col justify-center items-center bg-blue-50/50 rounded-3xl border border-blue-100 p-6">
+                             <div className="text-[32px] font-black text-blue-600 leading-none">{s.confidence}%</div>
+                             <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-2">AI Confidence</div>
                           </div>
                         </div>
-                        <div className="flex flex-col justify-center items-center bg-blue-50/50 rounded-3xl border border-blue-100 p-6">
-                           <div className="text-[32px] font-black text-blue-600 leading-none">{s.confidence}%</div>
-                           <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-2">AI Confidence</div>
-                        </div>
+                        {s.rejected && s.rejected.length > 0 && (
+                          <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4">
+                            <div className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2">❌ Отклонённые альтернативы</div>
+                            <div className="space-y-1.5">
+                              {s.rejected.map((r: any, ri: number) => (
+                                <div key={ri} className="flex items-center gap-2 text-xs">
+                                  <X className="w-3 h-3 text-rose-400 shrink-0" />
+                                  <span className="font-bold text-slate-600">{r.name}</span>
+                                  <span className="text-slate-400">—</span>
+                                  <span className="text-rose-500 font-medium">{r.reason}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1503,6 +1550,140 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               )}
             </div>
           )}
+
+          {activeTab === 'analytics' && (
+            <div className="max-w-5xl mx-auto space-y-8 pb-20">
+              <div>
+                <h3 className="font-black text-4xl text-slate-800 tracking-tight">Аналитика</h3>
+                <p className="text-slate-500 mt-1 font-medium flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-violet-500" />
+                  Недельные тренды и статистика школы
+                </p>
+              </div>
+
+              {/* Stats row */}
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { label: 'Задач за неделю', value: 34, color: 'bg-blue-600', icon: <Zap className="w-5 h-5 text-white" />, change: '+12%' },
+                  { label: 'Замен проведено', value: 7, color: 'bg-violet-500', icon: <Calendar className="w-5 h-5 text-white" />, change: '-2' },
+                  { label: 'Средняя явка', value: '94%', color: 'bg-emerald-500', icon: <Users className="w-5 h-5 text-white" />, change: '+1.5%' },
+                  { label: 'Инцидентов', value: 3, color: 'bg-rose-500', icon: <AlertTriangle className="w-5 h-5 text-white" />, change: '-40%' },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 ${s.color} rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>{s.icon}</div>
+                      <div className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">{s.change}</div>
+                    </div>
+                    <div className="text-3xl font-black text-slate-800">{s.value}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Attendance trend (CSS bar chart) */}
+              <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <div className="font-black text-lg text-slate-800">Посещаемость по дням</div>
+                    <div className="text-xs text-slate-400 font-medium">Последние 7 дней • порции / отчёты</div>
+                  </div>
+                  <div className="flex gap-3 text-[10px] font-bold uppercase tracking-widest">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Порции</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Отчёты</span>
+                  </div>
+                </div>
+                <div className="flex items-end gap-3 h-48">
+                  {[
+                    { day: 'Пн', portions: 120, reports: 6 },
+                    { day: 'Вт', portions: 135, reports: 7 },
+                    { day: 'Ср', portions: 128, reports: 6 },
+                    { day: 'Чт', portions: 142, reports: 8 },
+                    { day: 'Пт', portions: 115, reports: 5 },
+                    { day: 'Сб', portions: 45, reports: 3 },
+                    { day: 'Вс', portions: 0, reports: 0 },
+                  ].map((d, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full flex gap-1 items-end justify-center" style={{ height: '160px' }}>
+                        <div 
+                          className="w-5 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all duration-500" 
+                          style={{ height: `${(d.portions / 142) * 100}%`, minHeight: d.portions > 0 ? '8px' : '0' }}
+                        />
+                        <div 
+                          className="w-5 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-t-lg transition-all duration-500" 
+                          style={{ height: `${(d.reports / 8) * 100}%`, minHeight: d.reports > 0 ? '8px' : '0' }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">{d.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom row: Top incidents + Task completion */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl">
+                  <div className="font-black text-lg text-slate-800 mb-4">Топ-3 типа инцидентов</div>
+                  <div className="space-y-4">
+                    {[
+                      { type: 'Поломка оборудования', count: 5, pct: 50, color: 'bg-amber-500' },
+                      { type: 'Конфликт между учениками', count: 3, pct: 30, color: 'bg-rose-500' },
+                      { type: 'Протечка / авария', count: 2, pct: 20, color: 'bg-blue-500' },
+                    ].map((inc, i) => (
+                      <div key={i}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-sm font-bold text-slate-700">{inc.type}</span>
+                          <span className="text-xs font-black text-slate-400">{inc.count} случаев</span>
+                        </div>
+                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${inc.color} rounded-full transition-all duration-700`} style={{ width: `${inc.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl">
+                  <div className="font-black text-lg text-slate-800 mb-4">Эффективность задач</div>
+                  <div className="flex items-center justify-center py-4">
+                    <div className="relative w-36 h-36">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="97.4" strokeDashoffset="24.3" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="text-3xl font-black text-slate-800">75%</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Выполнено</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {[
+                      { label: 'Выполнено', value: 26, color: 'text-blue-600' },
+                      { label: 'В работе', value: 5, color: 'text-amber-500' },
+                      { label: 'Просрочено', value: 3, color: 'text-rose-500' },
+                    ].map((s, i) => (
+                      <div key={i} className="text-center">
+                        <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Director metric */}
+              <div className="bg-gradient-to-r from-violet-600 to-blue-600 rounded-3xl p-8 text-white shadow-2xl shadow-violet-500/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-widest text-violet-200 mb-2">💡 Метрика Покойо</div>
+                    <div className="text-2xl font-black">Директор тратил 2 часа в день на рутину →</div>
+                    <div className="text-4xl font-black mt-1">Теперь 5 минут</div>
+                  </div>
+                  <div className="text-8xl font-black opacity-20">24×</div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         <div className="p-8 bg-white/80 backdrop-blur-xl border-t border-slate-200 z-20">

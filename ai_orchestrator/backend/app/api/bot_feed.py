@@ -176,3 +176,50 @@ def get_food_svod():
         }
     except Exception as e:
         return {"total_portions": 0, "report_count": 0, "classes": {}, "incidents_today": 0, "absences_today": 0}
+
+
+from fastapi import BackgroundTasks
+import time as _time
+
+def _run_demo_scenario():
+    """Засеивает базу цепочкой реалистичных сообщений с задержками."""
+    _ensure_table()
+    scenario = [
+        ("Абенова Г.", "1А — 24 детей, 1 болеет", "food", "Явка: 24 чел. (1А)", "1А", 24),
+        ("Сейткали М.", "1Б: 22 ребёнка, все на месте", "food", "Явка: 22 чел. (1Б)", "1Б", 22),
+        ("Нурланова Д.", "2А — 26 детей, все пришли", "food", "Явка: 26 чел. (2А)", "2А", 26),
+        ("Касымова А.", "2Б — 23 человека, 2 отсутствуют", "food", "Явка: 23 чел. (2Б)", "2Б", 23),
+        ("Смирнова Е.", "В кабинете 302 сломался проектор, дети не могут смотреть презентацию", "incident", "Инцидент: сломан проектор в каб.302", None, None),
+        ("Аскар Б.", "Коллеги, я с температурой 39. Сегодня не смогу прийти на уроки", "absence", "Отсутствует: Аскар Б. Требуется замена.", None, None),
+        ("Жаксыбеков Е.", "3В — 20 детей, 2 болеют", "food", "Явка: 20 чел. (3В)", "3В", 20),
+        ("Кусаинова А.", "4А — 25 человек, все пришли!", "food", "Явка: 25 чел. (4А)", "4А", 25),
+    ]
+    for sender, text, mtype, summary, cls, cnt in scenario:
+        try:
+            conn = _get_conn()
+            conn.execute(
+                "INSERT INTO tg_messages (chat_id, sender, text, parsed_type, parsed_summary, food_class, food_count) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (0, sender, text, mtype, summary, cls, cnt)
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+        _time.sleep(2)  # 2 секунды между сообщениями для эффекта "живой ленты"
+
+
+@router.post("/demo-scenario")
+def start_demo_scenario(background_tasks: BackgroundTasks):
+    """Запускает автоматический демо-сценарий: 8 сообщений с задержкой 2 сек."""
+    # Сначала очищаем старые данные
+    try:
+        conn = _get_conn()
+        conn.execute("DELETE FROM tg_messages")
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    background_tasks.add_task(_run_demo_scenario)
+    return {"status": "ok", "message": "Demo scenario started (8 messages, ~16 seconds)"}
+
