@@ -92,7 +92,12 @@ async def transcribe_audio(file: UploadFile = File(...)):
                     )
                 return {"transcript": transcript.text, "error": None, "engine": "whisper"}
             except Exception as whisper_err:
-                print(f"⚠️ Whisper API Error: {whisper_err}")
+                # Проверяем, является ли ошибка проблемой аутентификации
+                error_str = str(whisper_err).lower()
+                if "invalid_api_key" in error_str or "401" in error_str or "authentication" in error_str:
+                    print(f"⚠️ OpenAI API ключ невалиден. Используем fallback режим.")
+                else:
+                    print(f"⚠️ Whisper API Error: {whisper_err}")
 
         # --- PROVIDER 3: SMART MOCK (FALLBACK 2 / OFFLINE) ---
         # Для хакатона: если всё упало, возвращаем одну из ожидаемых фраз на основе длины аудио

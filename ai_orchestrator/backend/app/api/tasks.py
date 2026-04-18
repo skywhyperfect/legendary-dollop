@@ -83,6 +83,13 @@ def create_task(req: TaskCreate, db: Session = Depends(get_db)):
         request.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(request, timeout=2) as response:
             pass
+    except urllib.error.URLError as e:
+        # Обработка ошибки соединения (Connection refused)
+        if "Connection refused" in str(e) or "Errno 61" in str(e):
+            print(f"⚠️ WhatsApp Bridge не запущен (порт 3000). Задача создана, но уведомление не отправлено.")
+            print(f"   Для отправки уведомлений запустите: cd whatsapp && node index.js")
+        else:
+            print(f"WhatsApp Broadcast failed (URLError): {e}")
     except Exception as e:
         print(f"WhatsApp Broadcast failed: {e}")
         

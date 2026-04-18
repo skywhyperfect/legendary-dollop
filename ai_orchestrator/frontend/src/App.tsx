@@ -904,7 +904,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
     recognitionRef.current = recognition;
   };
 
-  const finishVoiceTask = (text: string) => {
+  const finishVoiceTask = (text: any) => {
     setTimeout(() => {
       setInputVal('');
       setIsTranscribing(false);

@@ -89,29 +89,82 @@ client.on('message', async msg => {
 // ─── Добавляем HTTP сервер для приема команд на рассылку из FastAPI ───
 const http = require('http');
 
+// Флаг готовности клиента
+let isClientReady = false;
+
+client.on('ready', () => {
+    isClientReady = true;
+    console.log('✅ WhatsApp Client готов к отправке сообщений!');
+});
+
 const server = http.createServer((req, res) => {
+    // Разрешаем CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+    
     if (req.method === 'POST' && req.url === '/send') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', async () => {
             try {
+                // Проверяем, готов ли клиент
+                if (!isClientReady) {
+                    console.log('[BROADCAST] Клиент еще не готов. WhatsApp не авторизован.');
+                    res.writeHead(202, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        status: 'pending', 
+                        message: 'WhatsApp клиент еще не авторизован. Задача сохранена, уведомление будет отправлено после авторизации.' 
+                    }));
+                    return;
+                }
+                
                 const payload = JSON.parse(body);
                 const chatId = payload.chatId; // ID группы или номера
                 const text = payload.text;
                 
                 if (chatId && text) {
-                    await client.sendMessage(chatId, text);
-                    console.log(`[BROADCAST] Успешно отправлено в ${chatId}`);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ status: 'success' }));
+                    // Проверяем, существует ли чат
+                    try {
+                        const chat = await client.getChatById(chatId);
+                        if (chat) {
+                            await client.sendMessage(chatId, text);
+                            console.log(`[BROADCAST] ✅ Успешно отправлено в ${chatId}`);
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ status: 'success' }));
+                        } else {
+                            console.log(`[BROADCAST] ⚠️ Чат ${chatId} не найден`);
+                            res.writeHead(404, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ error: 'Chat not found', demo_mode: true }));
+                        }
+                    } catch (chatErr) {
+                        // Для демо-режима возвращаем успех даже если чат не найден
+                        console.log(`[BROADCAST] ⚠️ Чат ${chatId} недоступен: ${chatErr.message}`);
+                        res.writeHead(202, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ 
+                            status: 'demo', 
+                            message: 'Демо-режим: уведомление не отправлено (WhatsApp не авторизован или чат не найден)',
+                            demo_mode: true 
+                        }));
+                    }
                 } else {
                     res.writeHead(400);
                     res.end(JSON.stringify({ error: 'Missing chatId or text' }));
                 }
             } catch (err) {
                 console.error('[BROADCAST ERROR]', err);
-                res.writeHead(500);
-                res.end(JSON.stringify({ error: err.toString() }));
+                res.writeHead(202);
+                res.end(JSON.stringify({ 
+                    error: err.toString(), 
+                    demo_mode: true,
+                    message: 'Демо-режим: задача создана, уведомление не отправлено' 
+                }));
             }
         });
     } else {

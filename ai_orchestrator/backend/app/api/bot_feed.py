@@ -149,13 +149,20 @@ def _detect_recurrence(text: str) -> str:
 
 def _send_wa_reply(chat_id: str, text: str):
     """Отправляет авто-ответ в WhatsApp через локальный bridge (порт 3000)."""
-    import urllib.request, json
+    import urllib.request, json, urllib.error
     try:
         payload = json.dumps({"chatId": chat_id, "text": text}).encode('utf-8')
         req = urllib.request.Request("http://localhost:3000/send", data=payload, method='POST')
         req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, timeout=2):
             pass
+    except urllib.error.URLError as e:
+        # Обработка ошибки соединения (Connection refused)
+        if "Connection refused" in str(e) or "Errno 61" in str(e):
+            # Тихо игнорируем - WhatsApp Bridge не запущен
+            pass
+        else:
+            print(f"[AutoReply] Не удалось отправить (URLError): {e}")
     except Exception as e:
         print(f"[AutoReply] Не удалось отправить: {e}")
 
