@@ -11,6 +11,9 @@ const client = new Client({
 });
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const RETRY_DELAY_MS = 5000;
+let initInProgress = false;
+let retryTimer = null;
 
 client.on('qr', (qr) => {
     console.log('Пожалуйста, отсканируйте этот QR-код в приложении WhatsApp (Связанные устройства):');
@@ -19,6 +22,17 @@ client.on('qr', (qr) => {
 
 client.on('ready', () => {
     console.log('WhatsApp Client готов! Слушаю входящие сообщения...');
+    initInProgress = false;
+});
+
+client.on('disconnected', (reason) => {
+    console.warn(`[WA] Клиент отключился: ${reason}`);
+    scheduleReinit();
+});
+
+client.on('auth_failure', (msg) => {
+    console.error(`[WA] Ошибка авторизации: ${msg}`);
+    scheduleReinit();
 });
 
 client.on('message', async msg => {
@@ -61,4 +75,57 @@ client.on('message', async msg => {
     }
 });
 
-client.initialize();
+function isRecoverableInitError(err) {
+    const text = String(err && (err.stack || err.message || err)).toLowerCase();
+    return (
+        text.includes('execution context was destroyed') ||
+        text.includes('protocol error') ||
+        text.includes('target closed') ||
+        text.includes('navigation')
+    );
+}
+
+function scheduleReinit() {
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => {
+        retryTimer = null;
+        startClient();
+    }, RETRY_DELAY_MS);
+}
+
+async function startClient() {
+    if (initInProgress) return;
+    initInProgress = true;
+
+    try {
+        console.log('[WA] Инициализация клиента...');
+        await client.initialize();
+    } catch (err) {
+        initInProgress = false;
+        if (isRecoverableInitError(err)) {
+            console.warn(`[WA] Временная ошибка инициализации, повтор через ${RETRY_DELAY_MS / 1000}с: ${err.message}`);
+            scheduleReinit();
+            return;
+        }
+        console.error('[WA] Критическая ошибка инициализации:', err);
+        scheduleReinit();
+    }
+}
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[WA] unhandledRejection:', reason);
+    if (isRecoverableInitError(reason)) {
+        scheduleReinit();
+    }
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[WA] uncaughtException:', err);
+    if (isRecoverableInitError(err)) {
+        scheduleReinit();
+        return;
+    }
+    process.exit(1);
+});
+
+startClient();

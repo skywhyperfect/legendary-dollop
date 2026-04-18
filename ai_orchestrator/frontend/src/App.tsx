@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Send, Paperclip, CheckCircle2, AlertTriangle, Info, BookOpen, Activity, Command, Lock, User, CheckCircle, Users, Calendar, Play, QrCode, Zap, Shield, Rocket, Sparkles, ChevronRight, Brain, MessageSquare, Clock, ArrowRight, Check, FileText, Search, Quote, Printer, X, Download, Menu, BarChart3, TrendingUp } from 'lucide-react';
 import axios from 'axios';
-import { schoolLogoData as schoolLogo } from './assets/logoData';
-import pocoyoBranding from './assets/pocoyo_branding.png';
+import { Mic, Send, Paperclip, CheckCircle2, AlertTriangle, Info, BookOpen, Activity, Command, Lock, User, CheckCircle, Users, Calendar, Play, QrCode, Zap, Shield, Rocket, Sparkles, ChevronRight, Brain, MessageSquare, Clock, ArrowRight, Check, FileText, Search, Quote, Printer, X, Download, Menu, BarChart3, TrendingUp, Eye, EyeOff } from 'lucide-react';
+const API_BASE = `http://${window.location.hostname}:8000/api`;
+const pokoyoFinalLogo = '/Gemini_Generated_Image_rx48q8rx48q8rx48.png';
+
+const PocoyoBrandIcon = ({ className = "w-full h-full" }: { className?: string }) => (
+  <img
+    src={pokoyoFinalLogo}
+    alt="Pokoyo AI"
+    className={`${className} object-contain drop-shadow-[0_12px_24px_rgba(37,99,235,0.18)]`}
+  />
+);
 
 // --- HOME SCREEN (LANDING PAGE) ---
 function HomeScreen({ onStart }: { onStart: () => void }) {
@@ -13,9 +21,9 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-sky-100/50 rounded-full blur-[120px]"></div>
 
       <nav className="relative z-20 flex items-center justify-between px-10 py-8 max-w-7xl mx-auto">
-        <div className="flex items-center space-x-3 group cursor-pointer">
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 transform group-hover:rotate-12 transition-transform p-2.5">
-            <img src={schoolLogo} alt="IB Logo" className="w-full h-full object-contain" />
+        <div className="flex items-center space-x-3 group cursor-pointer" onClick={onStart}>
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 transform group-hover:rotate-12 transition-transform p-1 overflow-hidden border border-blue-50">
+            <PocoyoBrandIcon />
           </div>
           <span className="text-2xl font-black tracking-tighter text-slate-900">Покойо</span>
         </div>
@@ -31,8 +39,10 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
         <div className="grid lg:grid-cols-2 gap-20 items-center">
           <div className="space-y-8">
             <div className="relative inline-block mb-4 pt-4">
-              <div className="absolute -top-20 -left-2 w-32 h-32 pointer-events-none drop-shadow-2xl z-0">
-                <img src={pocoyoBranding} alt="Покойо" className="w-full h-full object-contain animate-bounce-subtle opacity-90 transition-transform hover:scale-110" />
+              <div className="absolute -top-20 -left-6 w-40 h-40 pointer-events-none drop-shadow-2xl z-0">
+                <div className="w-full h-full animate-bounce-subtle">
+                   <PocoyoBrandIcon />
+                </div>
               </div>
               <div className="inline-flex items-center space-x-2 bg-blue-50/80 backdrop-blur-sm border border-blue-100 px-4 py-2 rounded-full relative z-10 shadow-sm">
                 <Sparkles className="w-4 h-4 text-blue-600" />
@@ -134,6 +144,7 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
 function AuthScreen({ onLogin }: { onLogin: (role: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [role, setRole] = useState<'director' | 'teacher'>('director');
 
@@ -145,11 +156,16 @@ function AuthScreen({ onLogin }: { onLogin: (role: string) => void }) {
     }
 
     try {
-      const res = await axios.post('http://localhost:8000/api/auth/login', { email, password });
+      const res = await axios.post(`${API_BASE}/auth/login`, { email, password });
       localStorage.setItem('auth_token', res.data.token);
       onLogin('director');
     } catch (err: any) {
-      setError(err.response?.data?.detail || '❌ Неверный логин или пароль');
+      if (axios.isAxiosError(err) && !err.response) {
+        setError('❌ Сервер авторизации недоступен. Проверьте, запущен ли backend на порту 8000.');
+        return;
+      }
+
+      setError(err.response?.data?.detail || '❌ Не удалось выполнить вход');
     }
   };
 
@@ -161,7 +177,11 @@ function AuthScreen({ onLogin }: { onLogin: (role: string) => void }) {
       <div className="bg-white p-10 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.05)] border border-slate-200 w-full max-w-md z-10 transition-transform transform hover:scale-[1.02]">
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-blue-500/20 mb-4 p-3.5 border border-slate-800">
-            <img src={schoolLogo} alt="IB Logo" className="w-full h-full object-contain" />
+            <div className={`p-2 rounded-xl transition-all duration-300`}>
+              <div className="w-5 h-5">
+                 <PocoyoBrandIcon className="w-full h-full" />
+              </div>
+            </div>
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">Вход в систему</h2>
         </div>
@@ -180,7 +200,10 @@ function AuthScreen({ onLogin }: { onLogin: (role: string) => void }) {
           </div>
           <div className="relative group">
             <Lock className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-300 w-5 h-5" />
-            <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl py-4 pl-14 pr-4 focus:outline-none focus:border-blue-500 focus:bg-white transition" required />
+            <input type={showPassword ? "text" : "password"} placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl py-4 pl-14 pr-12 focus:outline-none focus:border-blue-500 focus:bg-white transition" required />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition focus:outline-none p-1">
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
           
           <button type="submit" className={`w-full text-white font-extrabold text-lg py-4 rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 active:scale-95 mt-4 ${role === 'director' ? 'bg-blue-600 shadow-blue-500/20' : 'bg-[#25D366] shadow-green-500/20'}`}>
@@ -198,7 +221,7 @@ function TeacherProfileDashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     // Fetch real data from backend
-    axios.get('http://localhost:8000/api/schedule/teacher-profile')
+    axios.get(`${API_BASE}/schedule/teacher-profile`)
       .then(res => setProfile(res.data))
       .catch(err => console.error("Error fetching profile", err));
   }, []);
@@ -313,7 +336,7 @@ function TeacherScreen({ onBack }: { onBack: () => void }) {
     
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/bot/whatsapp-auth-status');
+        const res = await axios.get(`${API_BASE}/bot/whatsapp-auth-status`);
         if (res.data.status === 'ready' && status !== 'ready') {
            setStatus('ready');
         } else if (res.data.qr_data && status !== 'ready') {
@@ -439,8 +462,8 @@ function Dashboard() {
     const fetchFeed = async () => {
       try {
         const [feedRes, svodRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/bot/messages?limit=30'),
-          axios.get('http://localhost:8000/api/bot/svod'),
+          axios.get(`${API_BASE}/bot/messages?limit=30`),
+          axios.get(`${API_BASE}/bot/svod`),
         ]);
         setBotFeed(feedRes.data);
         setSvod(svodRes.data);
@@ -477,16 +500,7 @@ function Dashboard() {
     { text: "3В - 22 человека, 3 отсутствуют.", time: "10:15", parsed: { type: "attendance", urgency: "low", insight: "✅ Питание: 22 порции. Список отсутствующих: Жусупов, Кан, Ли." } }
   ]);
   
-const [dbTasks, setDbTasks] = useState<any[]>([
-    { id: 991, title: "Починить трубу в женском туалете (2 этаж)", assignee: "Ахмет (Завхоз)", deadline: "Сегодня до 14:00", is_completed: false },
-    { id: 992, title: "Подготовить актовый зал к AIS Hack 3.0", assignee: "Айгерим", deadline: "До среды", is_completed: false },
-    { id: 993, title: "Заказать 20 бутылей воды для 1-4 классов", assignee: "Назкен", deadline: "Завтра", is_completed: false },
-    { id: 994, title: "Проанализировать посещаемость за неделю", assignee: "Секретарь", deadline: "Пятница", is_completed: false },
-    { id: 995, title: "Организовать замену для заболевшего историка", assignee: "Директор", deadline: "Срочно", is_completed: false },
-    { id: 996, title: "Снять показания тепловых счетчиков", assignee: "Ахмет (Завхоз)", deadline: "Среда", is_completed: true },
-    { id: 997, title: "Разослать письмо родителям 3В класса", assignee: "Смирнова Е.", deadline: "Сегодня", is_completed: true },
-    { id: 998, title: "Составить меню столовой на следующую неделю", assignee: "Шеф-повар", deadline: "Пятница", is_completed: true }
-  ]);
+const [dbTasks, setDbTasks] = useState<any[]>([]);
 
   const [mockSchedule, setMockSchedule] = useState([
     { 
@@ -618,7 +632,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
   // REAL DATA: Загрузка задач из БД
   const loadTasks = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/tasks/');
+      const res = await axios.get(`${API_BASE}/tasks/`);
       setDbTasks(res.data);
     } catch (e) {
       console.error("Failed to load tasks:", e);
@@ -627,6 +641,8 @@ const [dbTasks, setDbTasks] = useState<any[]>([
 
   useEffect(() => {
     loadTasks();
+    const interval = setInterval(loadTasks, 4000); // Опрашиваем задачи каждые 4 сек, чтобы увидеть подтверждение
+    return () => clearInterval(interval);
   }, []);
 
   const pushMessage = async (text, isVoice = false) => {
@@ -635,7 +651,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
 
     try {
       // REAL DATA: Запрос парсинга к настоящему FastAPI бэкенду
-      const res = await axios.post('http://localhost:8000/api/voice/task', { test_text: text });
+      const res = await axios.post(`${API_BASE}/voice/task`, { test_text: text });
       const tasksParsed = res.data.voice_decomposition?.tasks || [];
       
       let insightText = "Ничего не найдено.";
@@ -643,7 +659,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
         insightText = `✅ Распознано задач: ${tasksParsed.length}\n`;
         // Если нашли задачи, сохраняем их в базу!
         for (const t of tasksParsed) {
-          await axios.post('http://localhost:8000/api/tasks/', {
+          await axios.post(`${API_BASE}/tasks/`, {
             title: t.task_name || t.description || "Новая задача", 
             assignee: t.assignee || "Неизвестно", 
             deadline: t.deadline || "Без срока"
@@ -681,7 +697,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
   // REAL DATA: Пометка задачи выполненной в базе данных!
   const markTaskDone = async (id: number) => {
     try {
-      await axios.put(`http://localhost:8000/api/tasks/${id}/complete`);
+      await axios.put(`${API_BASE}/tasks/${id}/complete`);
       setDbTasks(prev => prev.map(t => t.id === id ? {...t, is_completed: true} : t));
     } catch (e) {
       alert("Не удалось закрыть задачу на сервере.");
@@ -746,7 +762,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
     try {
       const endpoint = ragMode === 'search' ? 'query' : 'checklist';
       const payload = ragMode === 'search' ? { query } : { order_text: query };
-      const res = await axios.post(`http://localhost:8000/api/rag/${endpoint}`, payload);
+      const res = await axios.post(`${API_BASE}/rag/${endpoint}`, payload);
       
       const data = res.data;
       if (ragMode === 'search') {
@@ -774,78 +790,128 @@ const [dbTasks, setDbTasks] = useState<any[]>([
     }
   };
 
-  const handleMicClick = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { 
-      if (isRecording) return;
-      setIsRecording(true);
-      
-      const fullText = "Назкен, пожалуйста, закажи воду на завтра для всех классов. Айгерим, нужно проверить освещение в актовом зале.";
-      let currentIdx = 0;
-      
-      // Эффект печатания (Live Transcription)
-      const interval = setInterval(() => {
-        if (currentIdx < fullText.length) {
-          const char = fullText[currentIdx];
-          setInputVal(prev => prev + char);
-          currentIdx++;
-        } else {
-          clearInterval(interval);
-          setIsRecording(false);
-          setIsTranscribing(true); // Переходим в фазу "анализа"
-          
-          setTimeout(() => {
-            setIsTranscribing(false);
-            const finalValue = fullText;
-            setInputVal('');
-            pushMessage(finalValue, true);
-          }, 1200);
-        }
-      }, 45); 
-      return; 
-    }
-    if (isRecording) return;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+  const mediaRecorderRef = useRef<any>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const handleMicClick = async () => {
+    // === СТОП: если уже записываем — останавливаем ===
+    if (isRecording) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
       }
-      if (finalTranscript) {
-         setIsRecording(false);
-         // Отправляем реальный голос на сервер
-         pushMessage(finalTranscript, true);
+      return;
+    }
+    if (isTranscribing) return;
+
+    // Запрашиваем доступ к микрофону
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      alert("🎤 Доступ к микрофону заблокирован.\n\nОткройте http://localhost:5173 в Google Chrome и разрешите микрофон.");
+      return;
+    }
+
+    // Настраиваем MediaRecorder для записи реального аудио
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = (event: any) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
       }
     };
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onend = () => setIsRecording(false);
-    recognition.start();
+
+    mediaRecorder.onstart = () => {
+      setIsRecording(true);
+      setInputVal('🎤 Запись идёт... говорите чётко');
+    };
+
+    mediaRecorder.onstop = async () => {
+      setIsRecording(false);
+      stream.getTracks().forEach(t => t.stop()); // Отключаем микрофон
+
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      if (audioBlob.size < 1000) {
+        setInputVal('');
+        return; // Слишком короткая запись
+      }
+
+      setIsTranscribing(true);
+      setInputVal('🧠 Whisper анализирует аудио...');
+
+      // Отправляем на бэкенд для Whisper-транскрипции
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'voice.webm');
+
+      try {
+        const res = await axios.post(`${API_BASE}/voice/transcribe`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data.transcript) {
+          // Whisper распознал! Показываем текст и отправляем на создание задач
+          const text = res.data.transcript;
+          setInputVal(text);
+          setTimeout(() => {
+            setInputVal('');
+            setIsTranscribing(false);
+            pushMessage(text, true);
+          }, 1000);
+        } else {
+          // Whisper недоступен — пробуем браузерный fallback
+          console.warn('Whisper unavailable, reason:', res.data.error);
+          setInputVal('');
+          setIsTranscribing(false);
+          fallbackBrowserSpeech(res.data.error || "Неизвестная ошибка бэкенда");
+        }
+      } catch (e: any) {
+        console.error('Whisper request failed:', e);
+        setInputVal('');
+        setIsTranscribing(false);
+        fallbackBrowserSpeech(e.message || "Network error");
+      }
+    };
+
+    mediaRecorder.start();
+  };
+
+  const fallbackBrowserSpeech = (errorReason: string = "") => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      const text = prompt("Введите текст задачи вручную:");
+      if (text && text.trim()) pushMessage(text.trim(), true);
+      return;
+    }
+    alert(`⚠️ Ошибка Alem API: ${errorReason}\n\nНажмите микрофон ещё раз — будет использован браузерный (менее точный) распознаватель.`);
   };
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans tracking-wide overflow-hidden relative">
       <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-blue-50 rounded-full mix-blend-multiply filter blur-[150px] opacity-60 z-0"></div>
 
-      <div className={`${isSidebarOpen ? 'w-1/3 max-w-[340px]' : 'w-0 overflow-hidden'} flex flex-col bg-white border-r border-slate-200 shadow-xl z-20 transition-all duration-300 relative`}>
-        <div className="p-8 flex flex-col items-center border-b border-slate-50 bg-white w-[340px]">
-          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 mb-4 p-3.5 border border-slate-800">
-            <img src={schoolLogo} alt="IB Logo" className="w-full h-full object-contain" />
+      {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+      <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative w-[340px] h-full flex flex-col bg-white border-r border-slate-200 shadow-xl z-50 transition-transform duration-300`}>
+        <div className="md:hidden absolute top-4 right-4">
+           <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X className="w-5 h-5"/></button>
+        </div>
+        <div className="p-8 flex flex-col items-center border-b border-slate-50 bg-white w-full">
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 mb-4 p-1 overflow-hidden border border-blue-50">
+            <PocoyoBrandIcon />
           </div>
           <div className="font-extrabold text-2xl text-blue-800">Покойо</div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 w-[340px]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 w-full">
           <MenuButton title="Рабочие чаты и ГС" desc="Анализ LLM парсером" icon={<Users />} active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
           <MenuButton title="Делегат (Voice-to-Task)" desc="Реальная База Данных" icon={<CheckCircle2 />} active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} />
           <MenuButton title="Smart Substitution" desc="Анализ LLM: Замены" icon={<Calendar />} active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')} />
           <MenuButton title="Бюрократический RAG" desc="Проверка по приказам" icon={<BookOpen />} active={activeTab === 'rag'} onClick={() => setActiveTab('rag')} />
           <MenuButton title="Аналитика" desc="Тренды и статистика" icon={<BarChart3 />} active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
         </div>
-        <div className="p-4 border-t border-slate-100 w-[340px]">
+        <div className="p-4 border-t border-slate-100 w-full">
           <button onClick={() => { localStorage.removeItem('auth_token'); window.location.reload(); }} className="w-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition font-bold text-sm p-3 text-center">Выйти из системы</button>
         </div>
       </div>
@@ -853,7 +919,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
       <div className="flex-1 flex flex-col relative z-0 min-w-0">
         <div className="absolute inset-0 bg-slate-50/50 z-[-1]"></div>
         
-        <div className="px-10 py-8 flex items-center justify-between z-10 sticky top-0 bg-white/10 backdrop-blur-md border-b border-slate-200">
+        <div className="px-4 md:px-10 py-5 md:py-8 flex items-center justify-between z-10 sticky top-0 bg-white/10 backdrop-blur-md border-b border-slate-200">
           <div className="flex items-center space-x-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
@@ -878,7 +944,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               setIsDemoRunning(true);
               setActiveTab('chat');
               try {
-                await axios.post('http://localhost:8000/api/bot/demo-scenario');
+                await axios.post(`${API_BASE}/bot/demo-scenario`);
               } catch {}
               setTimeout(() => setIsDemoRunning(false), 18000);
             }}
@@ -893,7 +959,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-10 pb-10 space-y-8 z-10 scroll-smooth pt-6">
+        <div className="flex-1 overflow-y-auto px-4 md:px-10 pb-10 space-y-8 z-10 scroll-smooth pt-6">
           {activeTab === 'chat' && (
             <div className="max-w-4xl mx-auto flex flex-col space-y-8">
               
@@ -921,7 +987,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                        <div className="text-sm font-bold text-blue-100 mt-1 uppercase tracking-widest">Порций всего</div>
                     </div>
                  </div>
-                 <div className="mt-8 grid grid-cols-3 gap-4 border-t border-white/20 pt-6 relative z-10">
+                 <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-white/20 pt-6 relative z-10">
                     <div className="flex items-center space-x-3 bg-white/10 p-4 rounded-3xl">
                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-black">
                          {svod ? svod.report_count : messages.filter(m => m.text.includes('детей')).length}
@@ -960,7 +1026,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                       <button 
                         onClick={async () => {
                           if (window.confirm('Точно очистить ленту?')) {
-                            await axios.delete('http://localhost:8000/api/bot/clear');
+                            await axios.delete(`${API_BASE}/bot/clear`);
                             setBotFeed([]);
                           }
                         }}
@@ -1063,7 +1129,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { label: 'Активных задач', value: dbTasks.filter(t => !t.is_completed).length, color: 'bg-blue-600', icon: <Zap className="w-5 h-5 text-white" /> },
                   { label: 'Выполнено сегодня', value: dbTasks.filter(t => t.is_completed).length, color: 'bg-emerald-500', icon: <CheckCircle className="w-5 h-5 text-white" /> },
@@ -1096,29 +1162,46 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                     onClick={handleMicClick}
                     disabled={isTranscribing}
                     className={`w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-90 ${
-                      isRecording ? 'bg-white text-blue-600 scale-110' :
-                      isTranscribing ? 'bg-slate-200 text-slate-400 cursor-wait' :
+                      isRecording ? 'bg-white text-rose-500 scale-110 animate-pulse' :
+                      isTranscribing ? 'bg-amber-100 text-amber-500 cursor-wait' :
                       'bg-blue-600 text-white hover:bg-blue-500 hover:scale-105'
                     }`}
                   >
-                    {isTranscribing ? <Activity className="w-10 h-10 animate-spin" /> : <Mic className="w-10 h-10" />}
+                    {isTranscribing ? <Activity className="w-10 h-10 animate-spin" /> : isRecording ? <div className="w-8 h-8 bg-rose-500 rounded-md" /> : <Mic className="w-10 h-10" />}
                   </button>
                   <div>
-                    <div className={`font-black text-xl ${isRecording ? 'text-white' : 'text-slate-800'}`}>
-                      {isRecording ? '🔴 Идёт запись...' : isTranscribing ? '🧠 AI разбивает на задачи...' : 'Нажмите и говорите'}
+                    <div className={`font-black text-xl ${isRecording ? 'text-white' : isTranscribing ? 'text-amber-600' : 'text-slate-800'}`}>
+                      {isRecording ? '🔴 Записываю... (нажмите ■ чтобы остановить)' : isTranscribing ? '🧠 Whisper + GPT-4 анализируют...' : '🎤 Нажмите и говорите'}
                     </div>
-                    <div className={`text-sm mt-1.5 font-medium ${isRecording ? 'text-blue-100' : 'text-slate-400'}`}>
-                      {isRecording ? 'Продиктуйте поручения. AI сам найдёт исполнителей и сроки.' : 'Браузер распознает речь — Whisper не нужен'}
+                    <div className={`text-sm mt-1.5 font-medium ${isRecording ? 'text-blue-100' : isTranscribing ? 'text-amber-400' : 'text-slate-400'}`}>
+                      {isRecording ? 'Аудио записывается. Произнесите задачи чётко и нажмите стоп.' : isTranscribing ? 'Аудио отправлено на сервер для распознавания...' : 'Записываем аудио → Whisper транскрибирует → GPT-4 создаёт задачи'}
                     </div>
                   </div>
+                  {/* Whisper transcript result */}
+                  {isTranscribing && inputVal && (
+                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left">
+                      <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Результат Whisper</div>
+                      <div className="text-slate-800 text-lg font-semibold leading-relaxed">{inputVal}</div>
+                    </div>
+                  )}
                   {!isRecording && !isTranscribing && (
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {['Назкен, закажи воду на завтра', 'Айгерим, подготовь актовый зал', 'Ахмет, почини парту в каб. 12'].map((phrase, i) => (
-                        <button key={i} onClick={() => { pushMessage(phrase); }}
-                          className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 px-4 py-2 rounded-xl hover:bg-blue-100 transition active:scale-95">
-                          💬 {phrase}
-                        </button>
-                      ))}
+                    <div className="space-y-3 w-full max-w-2xl">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Тестовые задания для демо (нажмите или произнесите)</div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {[
+                          'Назкен, закажи 20 бутылей воды на завтра для начальной школы',
+                          'Айгерим, подготовь актовый зал к родительскому собранию в среду',
+                          'Ахмет, почини проектор в кабинете 302, срочно',
+                          'Смирнова, проведите открытый урок по математике в 3В классе в пятницу',
+                          'Секретарю: распечатайте расписание на следующую неделю, 30 копий',
+                          'Охране: проверьте все запасные выходы до конца дня',
+                        ].map((phrase, i) => (
+                          <button key={i} onClick={() => { pushMessage(phrase, true); }}
+                            className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 px-4 py-2 rounded-xl hover:bg-blue-100 transition active:scale-95">
+                            💬 {phrase}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1148,7 +1231,14 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                         <div key={idx} className="group bg-white rounded-3xl shadow-md border border-slate-100 p-5 flex items-center gap-5 hover:shadow-xl hover:-translate-y-0.5 transition-all">
                           <div className={`w-12 h-12 ${avatarColor} rounded-2xl flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md`}>{initials}</div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-extrabold text-slate-800 text-base">{t.title}</div>
+                            <div className="flex items-center gap-3">
+                              <div className="font-extrabold text-slate-800 text-base">{t.title}</div>
+                              {t.is_accepted && (
+                                <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-blue-200">
+                                  <Check className="w-3 h-3" /> Принято
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                               <span className="text-xs font-bold text-slate-400">{t.assignee}</span>
                               <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border ${urgencyColor}`}>📅 {t.deadline}</span>
@@ -1284,7 +1374,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                     {/* ---- ROW 3: AI Rationale + Confidence ---- */}
                     {s.alert && (
                       <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
-                        <div className="grid grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8">
                           <div className="col-span-2 flex items-start space-x-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                             <Brain className="w-6 h-6 text-blue-500 mt-1 shrink-0" />
                             <div>
@@ -1343,7 +1433,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               </div>
 
               {/* Law cards */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   {
                     num: '№130', title: 'Питание и посещаемость',
@@ -1562,7 +1652,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: 'Задач за неделю', value: 34, color: 'bg-blue-600', icon: <Zap className="w-5 h-5 text-white" />, change: '+12%' },
                   { label: 'Замен проведено', value: 7, color: 'bg-violet-500', icon: <Calendar className="w-5 h-5 text-white" />, change: '-2' },
@@ -1620,7 +1710,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               </div>
 
               {/* Bottom row: Top incidents + Task completion */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl">
                   <div className="font-black text-lg text-slate-800 mb-4">Топ-3 типа инцидентов</div>
                   <div className="space-y-4">
@@ -1655,7 +1745,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 pb-10">
                     {[
                       { label: 'Выполнено', value: 26, color: 'text-blue-600' },
                       { label: 'В работе', value: 5, color: 'text-amber-500' },

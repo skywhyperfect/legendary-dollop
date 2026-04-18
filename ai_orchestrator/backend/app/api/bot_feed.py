@@ -17,8 +17,13 @@ if not os.path.exists(DB_PATH):
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    # Включаем WAL режим для стабильной одновременной записи
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except:
+        pass
     return conn
 
 
@@ -77,9 +82,11 @@ wa_auth_state = {
     "qr_data": None
 }
 
+from typing import Optional
+
 class WhatsAppAuthReq(BaseModel):
     status: str
-    qr_data: str = None
+    qr_data: Optional[str] = None
 
 @router.post("/whatsapp-auth")
 def update_whatsapp_auth(req: WhatsAppAuthReq):
@@ -98,18 +105,47 @@ def whatsapp_webhook(req: WhatsAppWebhookReq):
     """Принимает сообщения от реального WhatsApp и вставляет в ту же базу."""
     _ensure_table()
     mtype, summary, food_class, food_count = _local_classify(req.text)
+    # ─── ЛОГИКА ПОДТВЕРЖДЕНИЯ (Acceptance) ───
+    confirm_keywords = ["принял", "оке", "ок", "готов", "сделаю", "хорошо", "+"]
+    is_confirmation = any(k in req.text.lower() for k in confirm_keywords)
+    
     try:
         conn = _get_conn()
+        
+        # 1. Сохраняем в лог (как и раньше)
         conn.execute(
             """INSERT INTO tg_messages 
                (chat_id, sender, text, parsed_type, parsed_summary, food_class, food_count) 
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (req.chatId, req.sender, f"[WA] {req.text}", mtype, summary, food_class, food_count)
         )
+        
+        # 2. Если это подтверждение — ищем последнюю задачу для этого отправителя
+        if is_confirmation:
+            # Ищем задачу, где имя отправителя (req.sender) частично совпадает с assignee
+            # Например, Ахмед (sender) -> Ахмед (assignee)
+            search_sender = f"%{req.sender}%"
+            # Также попробуем наоборот: если в тексте assignee есть имя отправителя или наоборот
+            conn.execute(
+                """UPDATE task_reminders 
+                   SET is_accepted = 1 
+                   WHERE is_completed = 0 AND is_accepted = 0 
+                   AND (assignee LIKE ? OR ? LIKE '%' || assignee || '%')
+                   AND id = (
+                       SELECT id FROM task_reminders 
+                       WHERE is_completed = 0 AND is_accepted = 0 
+                       AND (assignee LIKE ? OR ? LIKE '%' || assignee || '%')
+                       ORDER BY id DESC LIMIT 1
+                   )""",
+                (search_sender, req.sender, search_sender, req.sender)
+            )
+            print(f"✅ Задача для {req.sender} помечена как Принятая.")
+
         conn.commit()
         conn.close()
-        return {"status": "ok", "parsed_type": mtype}
+        return {"status": "ok", "parsed_type": "acceptance" if is_confirmation else mtype}
     except Exception as e:
+        print(f"❌ Webhook Error: {e}")
         return {"status": "error", "message": str(e)}
 
 @router.get("/messages")

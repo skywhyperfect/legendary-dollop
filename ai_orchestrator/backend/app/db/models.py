@@ -15,4 +15,5 @@ class TaskReminder(Base):
     title = Column(String, index=True)
     assignee = Column(String)
     deadline = Column(String)
+    is_accepted = Column(Boolean, default=False)
     is_completed = Column(Boolean, default=False)

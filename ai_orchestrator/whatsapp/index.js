@@ -54,7 +54,15 @@ client.on('message', async msg => {
     const senderName = contact.name || contact.pushname || msg.from;
     
     console.log(`\n📥 Новое сообщение от: ${senderName}`);
+    console.log(`ID Чата (chatId) : ${msg.from}`);
     console.log(`Текст: ${msg.body}`);
+
+    // ОГРАНИЧЕНИЕ ДЛЯ ХАКАТОНА: Слушаем только нашу группу
+    const allowedGroup = "120363407134966766@g.us";
+    if (msg.from !== allowedGroup && !msg.from.includes(allowedGroup)) {
+        console.log(`⏭ Игнорирую сообщение (не из целевой группы)`);
+        return;
+    }
 
     // Отправляем на наш FastAPI Backend webhook
     try {
@@ -76,6 +84,44 @@ client.on('message', async msg => {
             console.error(`Детали: ${error.response.status} ${error.response.data}`);
         }
     }
+});
+
+// ─── Добавляем HTTP сервер для приема команд на рассылку из FastAPI ───
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/send') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(body);
+                const chatId = payload.chatId; // ID группы или номера
+                const text = payload.text;
+                
+                if (chatId && text) {
+                    await client.sendMessage(chatId, text);
+                    console.log(`[BROADCAST] Успешно отправлено в ${chatId}`);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'success' }));
+                } else {
+                    res.writeHead(400);
+                    res.end(JSON.stringify({ error: 'Missing chatId or text' }));
+                }
+            } catch (err) {
+                console.error('[BROADCAST ERROR]', err);
+                res.writeHead(500);
+                res.end(JSON.stringify({ error: err.toString() }));
+            }
+        });
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+});
+
+server.listen(3000, () => {
+    console.log('📡 WhatsApp-Bridge готов принимать рассылки на порту 3000 (/send)');
 });
 
 client.initialize();

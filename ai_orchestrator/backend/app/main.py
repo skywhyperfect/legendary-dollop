@@ -4,9 +4,26 @@ from contextlib import asynccontextmanager
 from app.api import parser, rag, schedule, voice, auth, tasks, bot_feed, notify
 from app.ai.rag_service import init_rag
 from app.db.database import engine, Base
+from dotenv import load_dotenv
+import os
+
+# Загружаем ключи из .env (который лежит на папку выше)
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+load_dotenv(dotenv_path)
 
 # Авторегистрация таблиц БД
 Base.metadata.create_all(bind=engine)
+
+# Авто-миграция: добавляем колонку is_accepted, если её нет (для хакатона)
+from sqlalchemy import text
+try:
+    with engine.connect() as migration_conn:
+        migration_conn.execute(text("ALTER TABLE task_reminders ADD COLUMN is_accepted BOOLEAN DEFAULT 0"))
+        migration_conn.commit()
+        print("✅ База данных дополнена колонкой is_accepted")
+except Exception:
+    # Ошибка обычно значит, что колонка уже существует
+    pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

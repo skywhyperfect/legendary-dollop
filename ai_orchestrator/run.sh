@@ -5,7 +5,7 @@ echo "🚀 Запуск AI Оркестратор..."
 # Backend
 echo "Запускаю FastAPI Backend..."
 cd backend
-uvicorn app.main:app --reload --port 8000 &
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd ..
 sleep 4
@@ -35,8 +35,8 @@ cd ..
 
 echo ""
 echo "✅ Все сервисы запущены!"
-echo "Backend:  http://localhost:8000"
-echo "Frontend: http://localhost:5173"
+echo "Backend:  http://<ваш-ip-или-localhost>:8000"
+echo "Frontend: http://<ваш-ip-или-localhost>:5173"
 echo "WhatsApp: QR-код будет в консоли"
 echo ""
 echo "Для остановки нажмите Ctrl+C"

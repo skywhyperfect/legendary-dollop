@@ -1,38 +1,44 @@
-2026/04/18-03:56:53.851 5328e4 Reusing MANIFEST /Users/daribay1337icloud.com/legendary-dollop/ai_orchestrator/whatsapp_bot/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/04/18-03:56:53.851 5328e4 Recovering log #489
-2026/04/18-03:56:53.852 5328e4 Reusing old log /Users/daribay1337icloud.com/legendary-dollop/ai_orchestrator/whatsapp_bot/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000489.log 
-2026/04/18-03:56:53.852 5328e4 Delete type=2 #486
-2026/04/18-03:56:54.595 5328e8 Compacting 1@1 + 1@2 files
-2026/04/18-03:56:54.599 5328e8 Generated table #494@1: 299 keys, 79770 bytes
-2026/04/18-03:56:54.599 5328e8 Compacted 1@1 + 1@2 files => 79770 bytes
-2026/04/18-03:56:54.600 5328e8 compacted to: files[ 0 0 1 0 0 0 0 ]
-2026/04/18-03:56:54.601 5328e8 Delete type=2 #484
-2026/04/18-03:56:54.601 5328e8 Delete type=2 #492
-2026/04/18-03:56:55.340 5328fb Manual compaction at level-0 from '\x00A\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00B\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/04/18-03:56:55.344 5328e8 Level-0 table #496: started
-2026/04/18-03:56:55.347 5328e8 Level-0 table #496: 81497 bytes OK
-2026/04/18-03:56:55.348 5328e8 Delete type=0 #489
-2026/04/18-03:56:55.349 5328fb Manual compaction at level-0 from '\x00B\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/04/18-03:56:55.349 5328e4 Manual compaction at level-0 from '\x00?\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00@\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/04/18-03:56:55.351 5328fb Level-0 table #498: started
-2026/04/18-03:56:55.352 5328fd Current memtable full; waiting...
-2026/04/18-03:56:55.352 5328fb Level-0 table #498: 30342 bytes OK
-2026/04/18-03:56:55.354 5328fb Delete type=0 #495
-2026/04/18-03:56:55.354 5328e8 Manual compaction at level-0 from '\x00@\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00A\x00\x00\x00' @ 0 : 0; will stop at '\x00@\x00\x00\xc8\x13\x00l\x00r\x00u\x00-\x00m\x00e\x00d\x00i\x00a\x00-\x00m\x00e\x00t\x00a\x00-\x00i\x00n\x00f\x00o' @ 1734128 : 0
-2026/04/18-03:56:55.354 5328e8 Compacting 1@0 + 1@1 files
-2026/04/18-03:56:55.355 5328e8 Level-0 table #501: started
-2026/04/18-03:56:55.355 5328e8 Level-0 table #501: 695 bytes OK
-2026/04/18-03:56:55.357 5328e8 Delete type=0 #497
-2026/04/18-03:56:55.359 5328e8 Generated table #500@0: 2451 keys, 21612 bytes
-2026/04/18-03:56:55.359 5328e8 Compacted 1@0 + 1@1 files => 21612 bytes
-2026/04/18-03:56:55.360 5328e8 compacted to: files[ 1 1 1 0 0 0 0 ]
-2026/04/18-03:56:55.360 5328e8 Delete type=2 #498
-2026/04/18-03:56:55.361 5328e8 Manual compaction at level-0 from '\x00@\x00\x00\xc8\x13\x00l\x00r\x00u\x00-\x00m\x00e\x00d\x00i\x00a\x00-\x00m\x00e\x00t\x00a\x00-\x00i\x00n\x00f\x00o' @ 1734128 : 0 .. '\x00A\x00\x00\x00' @ 0 : 0; will stop at '\x00C\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 1734159 : 0
-2026/04/18-03:56:55.361 5328e8 Compacting 1@0 + 1@1 files
-2026/04/18-03:56:55.362 5328e8 Generated table #502@0: 2432 keys, 21322 bytes
-2026/04/18-03:56:55.362 5328e8 Compacted 1@0 + 1@1 files => 21322 bytes
-2026/04/18-03:56:55.363 5328e8 compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/04/18-03:56:55.363 5328e8 Delete type=2 #500
-2026/04/18-03:56:55.363 5328e8 Delete type=2 #501
-2026/04/18-03:56:55.364 5328e8 Manual compaction at level-0 from '\x00C\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 1734159 : 0 .. '\x00A\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/04/18-03:56:55.364 5328e8 Manual compaction at level-0 from '\x00C\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00D\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.374 5b2f39 Reusing MANIFEST /Users/daribay1337icloud.com/legendary-dollop/ai_orchestrator/whatsapp_bot/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/04/18-12:39:58.375 5b2f39 Recovering log #560
+2026/04/18-12:39:58.379 5b2f39 Reusing old log /Users/daribay1337icloud.com/legendary-dollop/ai_orchestrator/whatsapp_bot/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000560.log 
+2026/04/18-12:39:58.582 5b2f45 Manual compaction at level-0 from '\x00d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00e\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.583 5b2f35 Level-0 table #566: started
+2026/04/18-12:39:58.583 5b2f47 Current memtable full; waiting...
+2026/04/18-12:39:58.586 5b2f35 Level-0 table #566: 126973 bytes OK
+2026/04/18-12:39:58.587 5b2f35 Delete type=0 #560
+2026/04/18-12:39:58.587 5b2f35 Manual compaction at level-0 from '\x00c\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00d\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.587 5b2f35 Level-0 table #568: started
+2026/04/18-12:39:58.588 5b2f45 Current memtable full; waiting...
+2026/04/18-12:39:58.588 5b2f35 Level-0 table #568: 1367 bytes OK
+2026/04/18-12:39:58.590 5b2f35 Delete type=0 #565
+2026/04/18-12:39:58.590 5b2f35 Level-0 table #570: started
+2026/04/18-12:39:58.591 5b2f46 Current memtable full; waiting...
+2026/04/18-12:39:58.591 5b2f35 Level-0 table #570: 617 bytes OK
+2026/04/18-12:39:58.592 5b2f35 Delete type=0 #567
+2026/04/18-12:39:58.592 5b2f35 Level-0 table #572: started
+2026/04/18-12:39:58.593 5b2f48 Current memtable full; waiting...
+2026/04/18-12:39:58.593 5b2f35 Level-0 table #572: 820 bytes OK
+2026/04/18-12:39:58.594 5b2f35 Delete type=0 #569
+2026/04/18-12:39:58.594 5b2f49 Level-0 table #574: started
+2026/04/18-12:39:58.595 5b2f49 Level-0 table #574: 519 bytes OK
+2026/04/18-12:39:58.595 5b2f35 Current memtable full; waiting...
+2026/04/18-12:39:58.596 5b2f49 Delete type=0 #571
+2026/04/18-12:39:58.596 5b2f39 Manual compaction at level-0 from '\x00f\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00g\x00\x00\x00' @ 0 : 0; will stop at '\x00e\x07\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 1780865 : 0
+2026/04/18-12:39:58.596 5b2f39 Compacting 4@0 + 1@1 files
+2026/04/18-12:39:58.596 5b2f39 Level-0 table #577: started
+2026/04/18-12:39:58.597 5b2f39 Level-0 table #577: 12726 bytes OK
+2026/04/18-12:39:58.598 5b2f39 Delete type=0 #573
+2026/04/18-12:39:58.610 5b2f39 Generated table #576@0: 3122 keys, 49196 bytes
+2026/04/18-12:39:58.610 5b2f39 Compacted 4@0 + 1@1 files => 49196 bytes
+2026/04/18-12:39:58.611 5b2f39 compacted to: files[ 1 1 1 0 0 0 0 ]
+2026/04/18-12:39:58.611 5b2f39 Manual compaction at level-0 from '\x00e\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00f\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.612 5b2f39 Manual compaction at level-0 from '\x00g\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00h\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.612 5b2f39 Manual compaction at level-0 from '\x00h\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00i\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.612 5b2f39 Manual compaction at level-0 from '\x00e\x07\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 1780865 : 0 .. '\x00g\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/04/18-12:39:58.612 5b2f39 Manual compaction at level-0 from '\x00b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00c\x00\x00\x00' @ 0 : 0; will stop at '\x00b\x0a\x02\x03\x00\x00\x00\x00\x00\x00\x00@' @ 1781541 : 0
+2026/04/18-12:39:58.612 5b2f39 Compacting 1@0 + 1@1 files
+2026/04/18-12:39:58.614 5b2f39 Generated table #578@0: 2552 keys, 21472 bytes
+2026/04/18-12:39:58.614 5b2f39 Compacted 1@0 + 1@1 files => 21472 bytes
+2026/04/18-12:39:58.614 5b2f39 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/04/18-12:39:58.615 5b2f39 Delete type=2 #576
+2026/04/18-12:39:58.615 5b2f39 Manual compaction at level-0 from '\x00b\x0a\x02\x03\x00\x00\x00\x00\x00\x00\x00@' @ 1781541 : 0 .. '\x00c\x00\x00\x00' @ 0 : 0; will stop at (end)

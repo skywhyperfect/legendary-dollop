@@ -58,9 +58,18 @@ def send(chat_id: int, text: str, parse_mode: str = "HTML"):
 
 # ─── SQLite для сводок ────────────────────────────────────────
 
+def _get_conn():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except:
+        pass
+    return conn
+
 def init_bot_db():
     """Создаём таблицы для бота в том же SQLite."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_conn()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS tg_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +90,7 @@ def save_message(chat_id: int, sender: str, text: str,
                  parsed_type: str, summary: str,
                  food_class: Optional[str] = None,
                  food_count: Optional[int] = None):
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_conn()
     conn.execute(
         "INSERT INTO tg_messages (chat_id, sender, text, parsed_type, parsed_summary, food_class, food_count) "
         "VALUES (?,?,?,?,?,?,?)",
@@ -92,7 +101,7 @@ def save_message(chat_id: int, sender: str, text: str,
 
 def get_food_svod() -> dict:
     """Суммируем все food-сообщения сегодня."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_conn()
     today = datetime.now().strftime("%Y-%m-%d")
     rows = conn.execute(
         "SELECT food_class, food_count FROM tg_messages "
@@ -421,6 +430,9 @@ def run_polling():
         except KeyboardInterrupt:
             log.info("Бот остановлен.")
             break
+        except requests.exceptions.ReadTimeout:
+            # Нормальное явление для long-polling, просто продолжаем
+            pass
         except requests.exceptions.ConnectionError:
             log.warning("Нет соединения с Telegram. Повтор через 5 сек...")
             import time; time.sleep(5)
