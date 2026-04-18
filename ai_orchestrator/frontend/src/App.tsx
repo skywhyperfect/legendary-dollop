@@ -509,6 +509,8 @@ function Dashboard() {
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
   const [isDemoRunning, setIsDemoRunning] = useState(false);
+  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
+  const [generatedSchedule, setGeneratedSchedule] = useState<any[]>([]);
 
   // Live Telegram feed
   const [botFeed, setBotFeed] = useState<any[]>([]);
@@ -910,6 +912,39 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
     }, 1200);
   };
 
+  const handleGenerateSchedule = async () => {
+    setIsGeneratingSchedule(true);
+    try {
+      const res = await axios.post(`${API_BASE}/schedule/generate-schedule`, {
+        classes: ["1А", "2Б", "5А", "8В", "10А", "11А"]
+      });
+      if (res.data?.schedule) {
+        setGeneratedSchedule(res.data.schedule);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при генерации расписания");
+    } finally {
+      setIsGeneratingSchedule(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      const res = await axios.post(`${API_BASE}/schedule/download-excel`, { schedule: generatedSchedule }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Покойо_Расписание.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при скачивании файла");
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans tracking-wide overflow-hidden relative">
       <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-blue-50 rounded-full mix-blend-multiply filter blur-[150px] opacity-60 z-0"></div>
@@ -931,6 +966,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
           <MenuButton title="Делегат (Voice-to-Task)" desc="Реальная База Данных" icon={<CheckCircle2 />} active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} />
           <MenuButton title="Smart Substitution" desc="Анализ LLM: Замены" icon={<Calendar />} active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')} />
           <MenuButton title="Бюрократический RAG" desc="Проверка по приказам" icon={<BookOpen />} active={activeTab === 'rag'} onClick={() => setActiveTab('rag')} />
+          <MenuButton title="Умное Расписание" desc="Генератор сетки с нуля" icon={<Zap />} active={activeTab === 'timetable'} onClick={() => setActiveTab('timetable')} />
           <MenuButton title="Аналитика" desc="Тренды и статистика" icon={<BarChart3 />} active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
         </div>
         <div className="p-4 border-t border-slate-100 w-full">
@@ -1228,6 +1264,114 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
                   )}
                 </div>
               </div>
+
+              {/* --- WHATSAPP LIVE FEED (Split: Recurring vs Spontaneous) --- */}
+              {botFeed.length > 0 && (
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shadow">
+                        <MessageSquare className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <div className="font-black text-slate-800">Задачи из WhatsApp</div>
+                        <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                          Прямая трансляция · обновление каждые 4 сек
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full uppercase tracking-widest">{botFeed.length} сообщений</span>
+                  </div>
+
+                  {/* Two-column split */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Column 1: Recurring */}
+                    {(() => {
+                      const recurring = [...botFeed].reverse().filter((m: any) =>
+                        m.parsed_type === 'other' && m.parsed_summary?.includes('[recurring]')
+                      );
+                      return (
+                        <div className="bg-white rounded-2xl border border-violet-100 shadow-sm overflow-hidden">
+                          <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-violet-50 to-white border-b border-violet-100">
+                            <span className="text-lg">🔁</span>
+                            <div>
+                              <div className="font-black text-violet-700 text-sm">Цикличные</div>
+                              <div className="text-[10px] text-violet-400 font-medium">Повторяются по расписанию</div>
+                            </div>
+                            <span className="ml-auto text-[10px] font-black bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">{recurring.length}</span>
+                          </div>
+                          <div className="divide-y divide-slate-50 max-h-[320px] overflow-y-auto">
+                            {recurring.length === 0 ? (
+                              <div className="px-5 py-8 text-center text-slate-400 text-sm">Нет цикличных задач</div>
+                            ) : recurring.map((msg: any, idx: number) => (
+                              <div key={idx} className="flex items-start gap-3 px-5 py-3.5 hover:bg-violet-50/40 transition-colors">
+                                <div className="w-2 h-2 rounded-full bg-violet-400 mt-1.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className="font-black text-slate-800 text-sm">{msg.sender}</span>
+                                    <span className="text-[10px] text-slate-400 ml-auto">{msg.created_at?.slice(11, 16)}</span>
+                                  </div>
+                                  <div className="text-sm text-slate-600 font-medium">{msg.text?.replace('[WA] ', '')}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Column 2: Spontaneous */}
+                    {(() => {
+                      const spontaneous = [...botFeed].reverse().filter((m: any) =>
+                        m.parsed_type !== 'other' ||
+                        (m.parsed_type === 'other' && !m.parsed_summary?.includes('[recurring]'))
+                      );
+                      const typeConfig: Record<string, {color: string, label: string}> = {
+                        food:     { color: 'bg-amber-100 text-amber-700',   label: '🍽 Питание' },
+                        absence:  { color: 'bg-rose-100 text-rose-700',     label: '🤒 Отсутствие' },
+                        medical:  { color: 'bg-red-100 text-red-700',       label: '🚑 Медицина' },
+                        incident: { color: 'bg-orange-100 text-orange-700', label: '🔧 Инцидент' },
+                        other:    { color: 'bg-blue-100 text-blue-700',     label: '📋 Задача' },
+                      };
+                      return (
+                        <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+                          <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-50 to-white border-b border-amber-100">
+                            <span className="text-lg">⚡</span>
+                            <div>
+                              <div className="font-black text-amber-700 text-sm">Спонтанные</div>
+                              <div className="text-[10px] text-amber-400 font-medium">Разовые запросы и инциденты</div>
+                            </div>
+                            <span className="ml-auto text-[10px] font-black bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">{spontaneous.length}</span>
+                          </div>
+                          <div className="divide-y divide-slate-50 max-h-[320px] overflow-y-auto">
+                            {spontaneous.length === 0 ? (
+                              <div className="px-5 py-8 text-center text-slate-400 text-sm">Нет спонтанных задач</div>
+                            ) : spontaneous.map((msg: any, idx: number) => {
+                              const cfg = typeConfig[msg.parsed_type] || typeConfig.other;
+                              return (
+                                <div key={idx} className="flex items-start gap-3 px-5 py-3.5 hover:bg-amber-50/40 transition-colors">
+                                  <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                                      <span className="font-black text-slate-800 text-sm">{msg.sender}</span>
+                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.color}`}>{cfg.label}</span>
+                                      <span className="text-[10px] text-slate-400 ml-auto">{msg.created_at?.slice(11, 16)}</span>
+                                    </div>
+                                    <div className="text-sm text-slate-600 font-medium truncate">{msg.text?.replace('[WA] ', '')}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
 
               {/* --- 3-STAGE FEEDBACK SYSTEM --- */}
               <div className="space-y-10">
@@ -1642,6 +1786,79 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'timetable' && (
+            <div className="max-w-4xl mx-auto space-y-8 pb-32">
+              <div className="bg-gradient-to-r from-blue-700 to-indigo-600 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+                <div className="relative z-10 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-4xl font-black tracking-tight mb-2">Генератор Расписания</h2>
+                    <p className="text-blue-100/80 font-medium text-lg max-w-lg">
+                      Умный алгоритм пересобирает расписание с нуля с учётом всех коллизий: учителя и кабинеты не пересекаются.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleGenerateSchedule}
+                    disabled={isGeneratingSchedule}
+                    className="bg-white text-blue-700 px-8 py-4 rounded-2xl font-black tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+                  >
+                    {isGeneratingSchedule ? (
+                      <><div className="w-5 h-5 border-2 border-blue-600 border-t-white rounded-full animate-spin" />ГЕНЕРАЦИЯ...</>
+                    ) : (
+                      <><Zap className="w-5 h-5" /> СГЕНЕРИРОВАТЬ</>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {generatedSchedule.length > 0 ? (
+                <div className="space-y-6 animate-fade-in-up">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-black text-2xl text-slate-800">Результат генерации (Предпросмотр)</h3>
+                    <button 
+                      onClick={handleDownloadExcel}
+                      className="bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold tracking-wide shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                    >
+                      <Download className="w-5 h-5" /> Экспорт в Excel
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {generatedSchedule.slice(0, 18).map((lesson, idx) => (
+                      <div key={idx} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full">{lesson.Класс}</span>
+                          <span className="text-slate-400 font-bold text-sm bg-slate-50 px-2 py-0.5 rounded-lg">{lesson.День}, {lesson.Урок} урок</span>
+                        </div>
+                        <h4 className="font-black text-lg text-slate-800 mt-2">{lesson.Предмет}</h4>
+                        <div className="flex items-start gap-2 mt-3 text-sm font-medium text-slate-500">
+                          <User size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                          <span className="whitespace-pre-wrap">{lesson.Учитель}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 text-sm font-medium text-slate-500">
+                          <QrCode size={14} className="text-rose-500" />
+                          <span>{lesson.Кабинет}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {generatedSchedule.length > 18 && (
+                    <div className="text-center w-full py-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="font-bold text-slate-400">Показаны первые 18 блоков из {generatedSchedule.length}...</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full text-center py-20 opacity-50">
+                  <div className="w-24 h-24 bg-slate-100 rounded-full mx-auto flex items-center justify-center mb-6">
+                    <Calendar className="w-10 h-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-400 mb-2">Расписание еще не сгенерировано</h3>
+                  <p className="text-slate-400 max-w-sm mx-auto">Нажмите кнопку наверх, чтобы ИИ пересобрал всю школу за секунду.</p>
                 </div>
               )}
             </div>

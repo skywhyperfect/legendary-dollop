@@ -1,14 +1,114 @@
-from fastapi import APIRouter, Response
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Response, Body
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+import pandas as pd
+import os
+import tempfile
 from app.services.scheduler import find_substitution
 from app.services.legal_generator import generate_substitution_order
 from app.services.pdf_service import create_order_html
 from app.data_loader import load_staff, load_schedule
+from app.services.generator import generate_weekly_schedule
 
 router = APIRouter()
+
+class ScheduleTarget(BaseModel):
+    classes: Optional[List[str]] = None
+
+import re
+from openpyxl.styles import Alignment, PatternFill, Font
+
+class ScheduleExportData(BaseModel):
+    schedule: List[dict]
+
+@router.post("/download-excel")
+async def export_excel(data: ScheduleExportData):
+    """
+    Принимает JSON сгенерённого расписания и отдаёт "Ленточное расписание"
+    Сгруппировано по Параллелям и Дням недели, в формате Pivot-матрицы.
+    """
+    df = pd.DataFrame(data.schedule)
+    tmp_path = os.path.join(tempfile.gettempdir(), f"ribbon_schedule_{int(datetime.now().timestamp())}.xlsx")
+    
+    if df.empty:
+        df.to_excel(tmp_path, index=False, engine='openpyxl')
+    else:
+        # 1. Извлекаем параллель
+        def get_grade(x):
+            match = re.search(r'\d+', str(x))
+            return int(match.group()) if match else 0
+            
+        df['Grade'] = df['Класс'].apply(get_grade)
+        
+        # 2. Формируем содержимое ячейки с переносом строк
+        df['Cell'] = df['Предмет'] + "\n" + df['Учитель'] + "\n(" + df['Кабинет'] + ")"
+        
+        with pd.ExcelWriter(tmp_path, engine='openpyxl') as writer:
+            grades_list = sorted(df['Grade'].unique())
+            days_order = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"]
+            
+            for grade in grades_list:
+                for day in days_order:
+                    subset = df[(df['Grade'] == grade) & (df['День'] == day)]
+                    if subset.empty:
+                        continue
+                        
+                    # Разворачиваем Ленту (Pivot)
+                    pivot = subset.pivot(index='Урок', columns='Класс', values='Cell')
+                    
+                    # Фиксируем порядок строк (уроки с 1 до 6)
+                    pivot = pivot.reindex(list(range(1, 7)))
+                    
+                    # Имя вкладки (макс 31 символ в Excel) e.g., "10кл Пн"
+                    day_short = day[:2]
+                    sheet_name = f"{grade} кл. {day_short}"
+                    pivot.to_excel(writer, sheet_name=sheet_name)
+                    
+                    # --- КРАСИВОЕ ФОРМАТИРОВАНИЕ OpenPyXL ---
+                    worksheet = writer.sheets[sheet_name]
+                    
+                    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid") # Tailwind Blue 500
+                    header_font = Font(color="FFFFFF", bold=True)
+                    index_fill = PatternFill(start_color="EFF6FF", end_color="EFF6FF", fill_type="solid") # Tailwind Blue 50
+                    
+                    for col in worksheet.columns:
+                        col_letter = col[0].column_letter
+                        worksheet.column_dimensions[col_letter].width = 26
+                        
+                        for cell in col:
+                            cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+                            
+                            # Форматируем шапку (Классы)
+                            if cell.row == 1:
+                                cell.fill = header_fill
+                                cell.font = header_font
+                            
+                            # Форматируем боковик (Уроки)
+                            if cell.column == 1 and cell.row > 1:
+                                cell.fill = index_fill
+                                cell.font = Font(bold=True, color="1E3A8A")
+                                
+                    # Высота строк для переноса
+                    for row in range(2, 9):
+                        worksheet.row_dimensions[row].height = 65
+
+    return FileResponse(
+        tmp_path, 
+        filename="Покойо_Ленточное_Расписание.xlsx", 
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@router.post("/generate-schedule")
+async def api_generate_schedule(target: ScheduleTarget):
+    """
+    Генерирует расписание на неделю с нуля.
+    Классы передаются в body: {"classes": ["1А", "5Б"]}.
+    Результат возвращается в виде JSON-списка.
+    """
+    schedule = generate_weekly_schedule(target.classes)
+    return {"status": "success", "total_slots": len(schedule), "schedule": schedule}
 
 @router.get("/teacher-profile")
 async def get_teacher_profile(teacher_name: str = "Иванова И. И."):

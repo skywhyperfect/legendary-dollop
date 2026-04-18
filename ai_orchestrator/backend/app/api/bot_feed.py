@@ -84,11 +84,35 @@ def _extract_food_info(text):
     return food_class, food_count
 
 def _extract_location(text):
-    """Извлекает номер кабинета/локацию из текста."""
-    # Ищем паттерны: "в 201 кабинете", "каб. 302", "кабинет 12", "на 3 этаже"
-    match = re.search(r"(?:каб(?:\.|инет)?|кабинете|офисе|этаж[еа]?)\s*(\d+[А-Яа-я]?)|(?:в|на)\s+(\d{2,3})\s*(?:каб|кабинет|офис|аудитор|класс|этаж)", text, re.IGNORECASE)
-    if match:
-        return (match.group(1) or match.group(2)).strip()
+    """Извлекает локацию/кабинет из текста с учётом аббревиатур и именованных мест."""
+    t = text.lower().strip()
+    
+    # 1. "кабинет фм 201", "каб фм201", "комната 10", "кабинет 201" — с необязательной аббревиатурой
+    m = re.search(
+        r"(?:каб(?:инет)?\.?|комнат[аыеу]?)\s*([а-яa-z]{1,4}\s*)?\s*(\d{1,3}[а-яa-z]?)",
+        t, re.IGNORECASE
+    )
+    if m:
+        prefix = (m.group(1) or "").strip().upper()
+        room = m.group(2).strip()
+        return f"{prefix} {room}".strip() if prefix else f"Каб./Комн. {room}"
+    
+    # 2. "в кабинете 201", "в 201 кабинете", "в 10 комнате"
+    m = re.search(r"(?:в|на)\s+(\d{1,3})\s*(?:каб|кабинет|офис|аудитор|класс|комнат[аыеу])", t, re.IGNORECASE)
+    if m:
+        return f"Каб./Комн. {m.group(1)}"
+    
+    # 3. Именованные локации: библиотека, спортзал, актовый зал, столовая, и т.д.
+    named = re.search(
+        r"(?:в|на)\s+(библиотек\w*|спортзал\w*|актов\w+\s*зал\w*|столов\w*|медпункт\w*|учительск\w*|холл\w*|коридор\w*|склад\w*|фойе\w*)",
+        t, re.IGNORECASE
+    )
+    if named:
+        loc = named.group(1).strip()
+        # Приводим к именительному падежу (простая нормализация)
+        loc = re.sub(r"е$", "", loc)  # библиотеке -> библиотек -> Библиотека
+        return loc.capitalize()
+    
     return None
 
 def _local_classify(text):
@@ -104,6 +128,24 @@ def _local_classify(text):
     if any(w in t for w in ["сломал", "поломка", "не работает", "протечка", "авария", "драка", "конфликт", "принтер", "проектор"]):
         return "incident", f"Инцидент: {text[:80]}", None, None
     return "other", text[:100], None, None
+
+def _detect_recurrence(text: str) -> str:
+    """
+    Returns 'recurring' if the text implies a repeated/scheduled task,
+    or 'spontaneous' for one-off requests.
+    """
+    t = text.lower()
+    recurring_keywords = [
+        "раз в", "ежедневно", "еженедельно", "ежемесячно", "каждый день",
+        "каждую неделю", "каждый месяц", "по понедельникам", "по вторникам",
+        "по средам", "по четвергам", "по пятницам", "регулярно",
+        "weekly", "daily", "monthly", "по графику", "по расписанию", "по плану",
+        "постоянно", "всегда", "always",
+    ]
+    for kw in recurring_keywords:
+        if kw in t:
+            return "recurring"
+    return "spontaneous"
 
 def _send_wa_reply(chat_id: str, text: str):
     """Отправляет авто-ответ в WhatsApp через локальный bridge (порт 3000)."""
@@ -175,13 +217,25 @@ def whatsapp_webhook(req: WhatsAppWebhookReq):
         elif mtype == "incident":
             loc_str = f" ({location})" if location else ""
             reply = (
-                f"🔧 *Aqbobek AI: Инцидент зафиксирован{loc_str}!*\n"
+                f"🔧 *Покойо AI: Инцидент зафиксирован{loc_str}!*\n"
                 f"{summary}\n"
                 f"Назначен: Завхоз.\nОжидайте, специалист уже в пути."
             )
             _send_wa_reply(req.chatId, reply)
-        
-        # 3. Если это подтверждение — ищем задачу
+        elif mtype == "other" and not is_confirmation:
+            loc_str = location if location else "Не указано"
+            priority = "high" if "срочно" in req.text.lower() else "medium"
+            task_subtype = _detect_recurrence(req.text)
+            subtype_label = "🔁 Цикличная" if task_subtype == "recurring" else "⚡ Спонтанная"
+            reply = (
+                f"Покойо AI: Задача создана! [{subtype_label}]\n"
+                f"{req.text.strip()}\n"
+                f"Место: {loc_str}\n"
+                f"Приоритет: {priority}."
+            )
+            # Store subtype in parsed_summary for frontend filtering
+            summary = f"[{task_subtype}] {req.text[:80]}"
+            _send_wa_reply(req.chatId, reply)
         if is_confirmation:
             search_sender = f"%{req.sender}%"
             cursor = conn.execute(
