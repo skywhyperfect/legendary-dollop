@@ -17,7 +17,7 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 transform group-hover:rotate-12 transition-transform p-2.5">
             <img src={schoolLogo} alt="IB Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="text-2xl font-black tracking-tighter text-slate-900">AI-Завуч</span>
+          <span className="text-2xl font-black tracking-tighter text-slate-900">Покойо</span>
         </div>
         <button 
           onClick={onStart}
@@ -32,7 +32,7 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
           <div className="space-y-8">
             <div className="relative inline-block mb-4 pt-4">
               <div className="absolute -top-20 -left-2 w-32 h-32 pointer-events-none drop-shadow-2xl z-0">
-                <img src={pocoyoBranding} alt="Pocoyo Branding" className="w-full h-full object-contain animate-bounce-subtle opacity-90 transition-transform hover:scale-110" />
+                <img src={pocoyoBranding} alt="Покойо" className="w-full h-full object-contain animate-bounce-subtle opacity-90 transition-transform hover:scale-110" />
               </div>
               <div className="inline-flex items-center space-x-2 bg-blue-50/80 backdrop-blur-sm border border-blue-100 px-4 py-2 rounded-full relative z-10 shadow-sm">
                 <Sparkles className="w-4 h-4 text-blue-600" />
@@ -277,7 +277,7 @@ function TeacherProfileDashboard({ onLogout }: { onLogout: () => void }) {
              <div className="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center mr-3 text-rose-500">
                <AlertTriangle size={18} strokeWidth={2.5}/>
              </div>
-             Задачи от Завуча
+             Задачи от Покойо
           </h2>
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200/60 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] flex items-start space-x-5 hover:border-rose-200 transition cursor-pointer group">
             <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shrink-0 group-hover:scale-110 group-hover:bg-rose-500 group-hover:text-white transition-all shadow-inner">
@@ -353,7 +353,7 @@ function TeacherScreen({ onBack }: { onBack: () => void }) {
           </h1>
           <p className="text-[15px] text-slate-500 font-medium mb-8 leading-relaxed max-w-[260px] mx-auto h-12">
             {status === 'ready' 
-              ? 'Ваш WhatsApp успешно подключен к системе AI-Завуч.' 
+              ? 'Ваш WhatsApp успешно подключен к системе Покойо.' 
               : status === 'syncing'
               ? 'Устанавливаем защищенное соединение с сервером...'
               : 'Наведите камеру смартфона на код, чтобы привязать номер.'}
@@ -422,7 +422,7 @@ function Dashboard() {
   const [ragResult, setRagResult] = useState<any>(null);
   const [isRagLoading, setIsRagLoading] = useState(false);
   const [ragMode, setRagMode] = useState<'search' | 'checklist'>('search');
-  const [mascotMsg, setMascotMsg] = useState('Привет! Я ваш завуч-ассистент. Всё схвачено! ✨');
+  const [mascotMsg, setMascotMsg] = useState('Привет! Я Покойо — ваш главный ассистент. Всё схвачено! ✨');
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -558,7 +558,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
     <h1>ПРИКАЗ № ${orderNum}</h1>
     <div class="meta"><span>г. Актобе</span><span>«${dateStr}»</span></div>
     <div class="subject">О замене учебных занятий</div>
-    <div class="badge">✓ &nbsp; Проверено AI на соответствие Приказу МОН РК №130 и №110 | Сформировано: AI-Завуч</div>
+    <div class="badge">✓ &nbsp; Проверено AI на соответствие Приказу МОН РК №130 и №110 | Сформировано: Покойо</div>
     <div class="preamble">
       В связи с временной нетрудоспособностью учителя <strong>${sub.teacher.replace(' (Болеет)', '')}</strong> и в целях обеспечения выполнения
       государственных общеобязательных стандартов образования, недопущения срыва учебного процесса
@@ -575,7 +575,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
     <div class="control">Контроль за исполнением настоящего приказа оставляю за собой.</div>
     <div class="sig"><span>Директор начальной школы AIS:</span><span class="sig-line"></span><span>/ Сарсенбаев А.Т.</span></div>
     <div class="sig"><span>С приказом ознакомлен(а):</span><span class="sig-line"></span><span>/ ${sub.replacement}</span></div>
-    <div class="footer">Сгенерировано автоматически системой AI-Завуч &nbsp;|&nbsp; Соответствие: Приказ МОН РК №110, №130 &nbsp;|&nbsp; ${dateStr}</div>
+    <div class="footer">Сгенерировано автоматически системой Покойо &nbsp;|&nbsp; Соответствие: Приказ МОН РК №110, №130 &nbsp;|&nbsp; ${dateStr}</div>
   </div>
   <button class="print-btn" onclick="window.print()">🖨️ Печать / Сохранить PDF</button>
   <script>setTimeout(() => window.print(), 600);</script>
@@ -825,7 +825,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
           <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/10 mb-4 p-3.5 border border-slate-800">
             <img src={schoolLogo} alt="IB Logo" className="w-full h-full object-contain" />
           </div>
-          <div className="font-extrabold text-2xl text-blue-800">AI-Завуч</div>
+          <div className="font-extrabold text-2xl text-blue-800">Покойо</div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-2 w-[340px]">
@@ -850,7 +850,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">AI-Дашборд</h2>
+            <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Дашборд Покойо</h2>
           </div>
           <div className="flex items-center bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200 gap-3">
             <span className="relative flex h-3 w-3">
@@ -870,7 +870,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
               {/* Module 1: Daily Attendance Summary */}
               <div className="bg-gradient-to-r from-blue-700 to-blue-500 rounded-[2.5rem] p-8 shadow-2xl shadow-blue-500/20 text-white relative overflow-hidden group">
                  <div className="absolute -bottom-2 right-4 pointer-events-none z-0 animate-bounce" style={{ animationDuration: '4s' }}>
-                    <img src="/pocoyo_win.png" alt="Pocoyo" className="w-[130px] h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] contrast-110 saturate-110 opacity-90" />
+                    <img src="/pocoyo_win.png" alt="Покойо" className="w-[130px] h-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] contrast-110 saturate-110 opacity-90" />
                  </div>
                  <div className="flex items-center justify-between relative z-10">
                     <div>
@@ -1002,10 +1002,10 @@ const [dbTasks, setDbTasks] = useState<any[]>([
 
                   <div className={`mt-3 ml-8 border rounded-2xl p-5 text-sm flex items-start w-[95%] shadow-md transition-all relative overflow-hidden ${m.parsed?.urgency === 'critical' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50/50 border-emerald-100'}`}>
                     <div className="absolute -right-2 -bottom-2 w-24 h-24 opacity-20 pointer-events-none transform rotate-12 group-hover:scale-110 transition-transform">
-                      <img src="/pocoyo_wink.png" alt="Pocoyo Insight" className="w-full h-full object-contain" />
+                      <img src="/pocoyo_wink.png" alt="Инсайт Покойо" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex flex-col w-full relative z-10">
-                      <b className={`uppercase text-[11px] font-black tracking-widest opacity-80 mb-2`}>[AI PARSED INSIGHT]</b>
+                      <b className={`uppercase text-[11px] font-black tracking-widest opacity-80 mb-2`}>[АНАЛИЗ ПОКОЙО]</b>
                       <span className="font-bold text-[15px] whitespace-pre-wrap">{m.parsed?.insight}</span>
                     </div>
                   </div>
@@ -1240,7 +1240,7 @@ const [dbTasks, setDbTasks] = useState<any[]>([
                           <span>{isGeneratingOrder ? 'Генерация...' : 'Скачать приказ'}</span>
                         </button>
                         <a
-                          href={`https://wa.me/?text=${encodeURIComponent(`Приказ о замене сформирован. Учитель: ${s.teacher}, заменяет: ${s.replacement}, класс ${s.class}, каб. ${s.room}, урок ${s.lesson}. Сделайте начисление за замещение. AI-Завуч.`)}`}
+                          href={`https://wa.me/?text=${encodeURIComponent(`Приказ о замене сформирован. Учитель: ${s.teacher}, заменяет: ${s.replacement}, класс ${s.class}, каб. ${s.room}, урок ${s.lesson}. Сделайте начисление за замещение. Покойо.`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1da851] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-md shadow-green-500/20"

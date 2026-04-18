@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     # Этап остановки приложения (shutdown)
     print("Завершение работы...")
 
-app = FastAPI(title="AI Завуч Оркестратор API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Покойо Оркестратор API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

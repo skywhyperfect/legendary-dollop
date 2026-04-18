@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "=========================================="
-echo "🚀 Запуск AI-Завуч (AIS Hack 3.0)"
+echo "🚀 Запуск Покойо — AI-Оркестратор Школы (AIS Hack 3.0)"
 echo "=========================================="
 
 cd ai_orchestrator
@@ -18,12 +18,13 @@ cleanup() {
 # Перехватываем сигналы остановки (Ctrl+C)
 trap cleanup SIGINT SIGTERM EXIT
 
-echo "📦 1. Запуск Backend (FastAPI)..."
+echo "📦 1. Запуск Backend (FastAPI) и Telegram-бота..."
 cd backend
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 uvicorn app.main:app --reload --port 8000 &
+python bot.py &
 cd ..
 
 echo "📱 2. Запуск WhatsApp Bridge (Node.js)..."

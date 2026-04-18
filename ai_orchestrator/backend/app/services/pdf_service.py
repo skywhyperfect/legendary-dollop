@@ -333,8 +333,7 @@ def create_order_html(
     </div>
 
     <div class="footer">
-      Сгенерировано автоматически системой AI-Завуч &nbsp;|&nbsp;
-      Соответствие: Приказ МОН РК №110, №130 &nbsp;|&nbsp; {order_date}
+      Сгенерировано автоматически системой Покойо — Ваш AI-Завуч 2.0 | {datetime.now().strftime('%d.%m.%Y')}
     </div>
   </div>
 

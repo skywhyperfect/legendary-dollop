@@ -53,7 +53,7 @@ def parse_with_llm(text: str) -> ParsedMessage:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ты AI-завуч. Твоя задача извлекать структурированные данные из сообщений учителей."},
+                {"role": "system", "content": "Ты голосовой ассистент Покойо. Твоя задача — извлекать структурированные данные из сообщений учителей и помогать директору."},
                 {"role": "user", "content": f"Извлеки факты из сообщения:\n{text}"}
             ],
             functions=[

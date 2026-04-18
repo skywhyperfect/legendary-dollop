@@ -55,7 +55,7 @@ def process_voice_command(test_text: str = None, file_path: str = None) -> TaskD
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Ты голосовой ИИ-завуч. Разбей транскрипцию голоса директора на четкие задачи."},
+                {"role": "system", "content": "Ты голосовой интеллект-ассистент Покойо. Разбей транскрипцию голоса директора на четкие задачи."},
                 {"role": "user", "content": text}
             ],
             functions=[

@@ -1,5 +1,5 @@
 """
-AI-Завуч Telegram Bot
+Покойо Telegram Bot
 ======================
 Запуск: python bot.py (параллельно с uvicorn backend)
 
@@ -182,7 +182,7 @@ def parse_message_backend(text: str) -> dict:
 def handle_start(chat_id: int, first_name: str):
     send(chat_id, f"""👋 <b>Привет, {first_name}!</b>
 
-Я — <b>AI-Завуч Оркестратор</b> школы Aqbobek 🏫
+Я — <b>Покойо</b>, ваш AI-Оркестратор школы Aqbobek 🏫
 
 <b>Учителям — просто напишите:</b>
 • <i>«1А — 25 детей, 2 болеют»</i>
@@ -257,7 +257,7 @@ def handle_svod(chat_id: int):
         lines.append(f"  {cls}: <b>{cnt}</b> порций")
     lines.append(f"\n🍽 <b>ИТОГО: {data['total']} порций</b>")
     lines.append(f"📝 Получено отчётов: {data['count']}")
-    lines.append(f"\n✅ Автоматически сформировано AI-Завуч")
+    lines.append(f"\n✅ Автоматически сформировано Покойо")
     send(chat_id, "\n".join(lines))
 
 def handle_incidents(chat_id: int):
@@ -327,7 +327,7 @@ def handle_text(chat_id: int, sender: str, text: str):
 # ─── Polling loop ─────────────────────────────────────────────
 
 def run_polling():
-    log.info("🤖 AI-Завуч Telegram Bot запущен (polling mode)")
+    log.info("🤖 Покойо Telegram Bot запущен (polling mode)")
     log.info(f"Backend: {BACKEND_URL}")
 
     init_bot_db()

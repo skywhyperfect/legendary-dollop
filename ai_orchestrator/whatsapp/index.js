@@ -65,7 +65,7 @@ client.on('message', async msg => {
             chatId: msg.from
         });
         
-        console.log(`📡 Отправлено в AI-Завуч. Статус: ${response.data.status}`);
+        console.log(`📡 Отправлено в Покойо. Статус: ${response.data.status}`);
         
         // Опционально: отправить галочку (реакцию) в самом WhatsApp
         // await msg.react('🤖');
