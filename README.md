@@ -1,157 +1,165 @@
-# 🐧 Покойо — AI-Оркестратор Школы
+# AI Orchestrator (Покойо) – Smart School Assistant
 
-> **Хакатон**: AIS Hack 3.0 | Трек: EdTech & AI Management  
-> **Партнёр**: Образовательный комплекс «Aqbobek»  
-> **Telegram-бот**: [@legendarydolbot](https://t.me/legendarydolbot)
-
-**Покойо** — интеллектуальный ассистент директора школы. Он не заставляет учителей менять привычки — вместо этого встраивается в их WhatsApp и Telegram, превращая хаос чатов в структурированные данные, автоматические замены и юридически грамотные приказы.
+> **Покойо** is a premium, AI‑driven orchestration platform for schools. It integrates **WhatsApp**, **voice‑to‑task**, **real‑time analytics**, and **AI‑generated reports** into a sleek, glass‑morphism dashboard.
 
 ---
 
-## 🏆 Закрытие всех критериев оценки (100%)
-
-| Критерий | Вес | Как реализовано |
-|----------|-----|-----------------|
-| **Извлечение данных** | 30% | Гибридный NLP-парсер (Telegram + WhatsApp). Fuzzy NLP: понимает "23 из 25", "все кроме Алмаса", "24 (+2 опоздали)". Автоматический свод по питанию. |
-| **Smart Substitution** | 30% | AI анализирует реальное расписание (Excel), находит свободного учителя, проверяет через RAG на соответствие Приказам МОН РК №110 и №130, показывает отклонённые альтернативы с причинами. |
-| **Voice-to-Task** | 20% | Директор говорит в микрофон → браузер распознаёт речь → LLM (GPT-4 Function Calling) разбивает на задачи с исполнителями и дедлайнами → сохраняет в БД. |
-| **UX Дашборда** | 20% | Премиальный интерфейс: Glassmorphism, 5 вкладок, аналитика с графиками, генерация приказов по ГОСТу, Live Demo режим. |
-
----
-
-## 🚀 Ключевые фичи
-
-### 🎬 Live Demo режим
-Кнопка на дашборде запускает автоматический сценарий: 8 реалистичных сообщений от учителей появляются в ленте с задержкой 2 сек. Жюри наблюдает как система парсит данные в реальном времени без единого ручного ввода.
-
-### 📊 Аналитика
-Отдельная вкладка с недельными трендами: посещаемость по дням (bar chart), эффективность задач (75% выполнено), топ-3 типа инцидентов, метрика **"2 часа рутины → 5 минут с Покойо (24×)"**.
-
-### 🧠 Fuzzy NLP
-Парсер не ломается на грязном вводе. Поддерживает форматы:
-- `"1А — 25 детей, 2 болеют"` → стандарт
-- `"23 из 25"` → извлекает присутствующих
-- `"все пришли кроме Алмаса и Диаса"` → считает отсутствующих
-- `"1А: 24 (+2 опоздали)"` → берёт основное число
-
-### ❌ Визуализация конфликтов замен
-Smart Substitution показывает не только выбранного учителя, но и **кого AI рассмотрел и почему отклонил**: "Занята на 1 уроке", "Профиль не совпадает", "Превышение нагрузки (Прик. МОН №110 п.3)".
-
-### 📄 Генерация приказов
-Один клик → готовый HTML-документ по ГОСТу РК с реквизитами школы, ссылками на приказы МОН, подписями. Можно сразу печатать или скачать как PDF.
+## 📚 Table of Contents
+1. [Project Overview](#-project-overview)
+2. [Architecture](#-architecture)
+3. [Features](#-features)
+4. [Quick Start (Local Development)](#-quick-start-local-development)
+5. [Backend API](#-backend-api)
+6. [Frontend UI](#-frontend-ui)
+7. [Environment Variables](#-environment-variables)
+8. [Testing & Debugging](#-testing--debugging)
+9. [Contribution Guide](#-contribution-guide)
+10. [License](#-license)
 
 ---
 
-## 🛠️ Архитектура
+## 🎯 Project Overview
+**AI Orchestrator** (named *Покойо*) automates routine school workflows:
+- Teachers send **WhatsApp messages** (voice or text) → automatically creates tasks.
+- **Self‑assignment**: when a teacher replies with a confirmation keyword ("ок", "понял", etc.) the system instantly claims the pending task.
+- **Analytics Dashboard**: real‑time KPIs, incident tracking, food‑service stats, and more.
+- **AI‑Generated PDF Reports**: choose a period (week, month, quarter, custom) and get a beautifully styled, AI‑summarized report ready for printing.
 
-```text
-       ┌───────────────┐        ┌───────────────────┐
-       │               │        │                   │
-    ┌──► Telegram Bot  ├────────► FastAPI Backend   │
-    │  │ @legendarydolbot│ POST │ (Central Parser)  │
-    │  └───────────────┘        │                   │
-    │                           │ + Fuzzy NLP       │
-    │  Покойо Ассистент         │ + RAG (FAISS)     │
- Учителя                        │ + Smart Scheduler │
-    │                           │ + GPT-4 Function  │
-    │  ┌───────────────┐        │   Calling          │
-    └──► WhatsApp App  ├────────►                   │
-       │ (whatsapp-web.js)│POST │                   │
-       └─────┬─────────┘        └──────┬────────────┘
-             │                         │
-         Node.js                       ▼
-       (Слушатель)              ┌───────────────────┐
-                                │ React + Vite      │
-                                │ Дашборд Покойо    │
-                                │ (5 вкладок)       │
-                                └───────────────────┘
-```
-
-**Вкладки дашборда:**
-1. 💬 **Рабочие чаты** — LIVE лента из Telegram/WhatsApp + свод по питанию
-2. 🎯 **Делегат** — Voice-to-Task с микрофоном + реальная БД задач
-3. 📅 **Smart Substitution** — умные замены + отклонённые альтернативы
-4. 📖 **RAG** — поиск по приказам МОН РК + генерация чек-листов
-5. 📊 **Аналитика** — графики, тренды, метрики эффективности
+All components are built with **FastAPI**, **React + TypeScript**, and **SQLite** for a lightweight, zero‑dependency deployment.
 
 ---
 
-## 🏗️ Быстрый старт
-
-```bash
-# Одна команда для запуска всех сервисов
-chmod +x run.sh && ./run.sh
-```
-
-Скрипт поднимает:
-- **FastAPI Backend** (порт 8000) — парсинг, RAG, расписание, задачи
-- **Telegram Bot** — polling mode, обработка сообщений учителей
-- **WhatsApp Bridge** — Node.js слушатель (QR-код в терминале)
-- **React Frontend** (порт 5173) — дашборд директора
-
-### Требования
-- Python 3.11+ с `pip install -r requirements.txt`
-- Node.js 18+ с `npm install` (в папках `frontend/` и `whatsapp/`)
-- `.env` файл с `OPENAI_API_KEY` и `TELEGRAM_BOT_TOKEN`
-
----
-
-## 📁 Структура проекта
-
+## 🏗 Architecture
 ```
 legendary-dollop/
-├── run.sh                          # Единая точка запуска
-├── README.md                       # Этот файл
-├── clean_db.py                     # Очистка БД перед демо
-└── ai_orchestrator/
-    ├── backend/
-    │   ├── app/
-    │   │   ├── main.py             # FastAPI точка входа
-    │   │   ├── api/
-    │   │   │   ├── bot_feed.py     # LIVE лента + Demo Scenario
-    │   │   │   ├── tasks.py        # CRUD задач
-    │   │   │   ├── voice.py        # Voice-to-Task endpoint
-    │   │   │   ├── rag.py          # RAG запросы
-    │   │   │   └── schedule.py     # Расписание + замены
-    │   │   ├── ai/
-    │   │   │   ├── llm_parser.py   # GPT парсер сообщений
-    │   │   │   └── rag_service.py  # FAISS векторный поиск
-    │   │   └── services/
-    │   │       ├── scheduler.py    # Алгоритм замен
-    │   │       └── voice_to_task.py# Декомпозиция голоса
-    │   ├── bot.py                  # Telegram Bot (polling)
-    │   ├── data/                   # Excel расписание + приказы
-    │   └── orchestrator.db         # SQLite база
-    ├── frontend/
-    │   └── src/App.tsx             # React дашборд (все 5 вкладок)
-    └── whatsapp/
-        └── index.js               # WhatsApp Bridge (Node.js)
+├─ ai_orchestrator/                # Python package (backend)
+│   ├─ backend/
+│   │   ├─ app/
+│   │   │   ├─ api/               # FastAPI routers (bot_feed, tasks, analytics, …)
+│   │   │   ├─ ai/                # LLM parsers, RAG, voice‑to‑task utilities
+│   │   │   ├─ db/                # SQLite engine & migrations
+│   │   │   └─ main.py            # FastAPI entry point
+│   └─ whatsapp/                  # Node.js bridge forwarding WA messages to /api/bot/whatsapp-webhook
+├─ frontend/                       # React + Vite UI
+│   └─ src/App.tsx                # Dashboard + GenerateReportButton component
+└─ orchestrator.db                 # SQLite DB (auto‑created on first run)
 ```
 
----
-
-## 🔑 Demo Bypass (секретка для питча)
-
-Если на площадке нет интернета:
-- На странице QR-кода → **кликните по центру QR-иконки** → анимация синхронизации → статус Ready (без реального подключения)
-- Кнопка **"🎬 Live Demo"** в хедере → автоматический сценарий с 8 сообщениями
-- Кнопка **"Очистить"** в ленте Telegram → моментальный сброс перед каждым показом
+- **FastAPI** serves JSON APIs and static assets.
+- **WhatsApp bridge** (Node.js) forwards inbound messages to `POST /api/bot/whatsapp-webhook`.
+- **Analytics router** (`/api/analytics/report`) aggregates data and returns a printable HTML document.
+- **Frontend** polls the backend every few seconds, displays glass‑morphism cards, and offers a period selector for reports.
 
 ---
 
-## 🤖 Telegram Bot
-
-**[@legendarydolbot](https://t.me/legendarydolbot)** — живой бот, можно тестировать прямо сейчас.
-
-| Команда | Описание |
-|---------|----------|
-| `/start` | Приветствие + инструкция |
-| `/svod` | Сводка по питанию за сегодня |
-| `/incidents` | Активные инциденты |
-| `/zamena <имя>` | Найти замену учителю |
-| `/demo` | Засеять тестовые данные |
-| Любой текст | AI парсит и классифицирует |
+## ✨ Features
+| Feature | Description |
+|---|---|
+| **WhatsApp Integration** | Real‑time message ingestion, auto‑parsing, and task creation. |
+| **Self‑Assignment Logic** | Confirmation keywords (`ок`, `принял`, `взял`…) auto‑assign tasks from "Нераспознанный сотрудник". |
+| **Dynamic Keyword Expansion** | Supports natural‑language confirmations and multilingual variants. |
+| **Analytics Dashboard** | KPIs: total messages, food portions, absences, task completion rate, incident list, etc. |
+| **AI‑Generated Report** | Choose **week / month / quarter / custom** period → AI writes a concise summary → PDF‑ready HTML. |
+| **Period Selector UI** | Tabs + custom date‑picker in the `GenerateReportButton` component. |
+| **Automatic DB Migration** | Missing columns (`chat_id`, `parsed_summary`, `location`, …) are added on‑the‑fly. |
+| **Premium UI** | Glass‑morphism, vibrant gradients, smooth micro‑animations, Google Inter font. |
 
 ---
 
-**Собрано с ❤️ командой Покойо для AIS Hack 3.0**
+## 🚀 Quick Start (Local Development)
+> **Prerequisites**: Python 3.12+, Node 20+, npm, git.
+
+```bash
+# 1️⃣ Clone the repo
+git clone https://github.com/skywhyperfect/legendary-dollop.git
+cd legendary-dollop/ai_orchestrator
+
+# 2️⃣ Create a virtual environment & install backend deps
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3️⃣ Set up environment variables (see section below)
+cp .env.example .env
+# edit .env as needed (OPENAI_API_KEY, WHATSAPP_TOKEN, etc.)
+
+# 4️⃣ Run database migrations (auto‑run on first start)
+# No manual step needed – the app will create `orchestrator.db`.
+
+# 5️⃣ Start the FastAPI backend
+uvicorn app.main:app --reload --port 8000
+
+# 6️⃣ In another terminal, start the WhatsApp bridge (Node.js)
+cd ../../whatsapp
+npm install   # one‑time only
+node index.js   # forwards messages to http://localhost:8000/api/bot/whatsapp-webhook
+
+# 7️⃣ Start the React frontend (Vite)
+cd ../../frontend
+npm install
+npm run dev   # opens http://localhost:5173
+```
+
+Open the dashboard, send a WhatsApp voice message, and watch the task appear instantly. Use the **AI Report** button at the bottom of the Analytics tab to generate a PDF.
+
+---
+
+## 📡 Backend API
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/bot/whatsapp-webhook` | Receives WhatsApp messages, stores them, runs self‑assignment logic. |
+| `GET`  | `/api/tasks/` | List all tasks (with `is_accepted`, `is_completed`). |
+| `GET`  | `/api/analytics/report` | Returns `{ html, stats }`. Accepts optional query params `date_from` & `date_to` (YYYY‑MM‑DD). |
+| `GET`  | `/api/bot/messages` | Raw WhatsApp messages (debug). |
+| `GET`  | `/ping` | Health check. |
+
+All dates are stored in **localtime** (`datetime('now','localtime')`).
+
+---
+
+## 🎨 Frontend UI
+- **Dashboard** (`App.tsx`) – glass‑morphism cards for tasks, KPIs, and director metrics.
+- **GenerateReportButton** – new component with period tabs (7 days, month, quarter, custom) and date‑picker inputs.
+- **Print‑Ready HTML** – generated on the backend; the button opens it in a new tab and triggers `window.print()` automatically.
+
+> The UI uses **Tailwind‑compatible utility classes** written manually (no external UI library) to keep the bundle tiny while delivering premium aesthetics.
+
+---
+
+## 🔐 Environment Variables
+Create a `.env` file in the project root:
+```
+# FastAPI
+OPENAI_API_KEY=your-openai-key   # optional – fallback uses a static template
+# WhatsApp bridge (example)
+WHATSAPP_TOKEN=your-whatsapp-token
+# Optional – set a custom DB path
+SQLALCHEMY_DATABASE_URL=sqlite:///./orchestrator.db
+```
+If `OPENAI_API_KEY` is missing or set to `mock`, the system will use a deterministic fallback summary.
+
+---
+
+## 🧪 Testing & Debugging
+- **Database inspection**: `sqlite3 orchestrator.db` → `SELECT * FROM tg_messages;`
+- **API testing**: `curl http://localhost:8000/api/analytics/report?date_from=2026-04-01&date_to=2026-04-18`
+- **Frontend logs**: open the browser console; the button prints the generated URL for the PDF.
+- **WhatsApp bridge logs**: the Node process prints incoming messages and any forwarding errors.
+
+---
+
+## 🤝 Contribution Guide
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/awesome‑feature`).
+3. Follow the existing code style (black for Python, Prettier for TS).
+4. Write tests for new logic (pytest for backend, jest for frontend).
+5. Submit a pull request – CI will run linting, type‑checking, and unit tests.
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License** – see the `LICENSE` file for details.
+
+---
+
+*Built with love for the AIS Hack 3.0 demo. Happy hacking!*
