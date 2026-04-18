@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import parser, rag, schedule, voice, auth, tasks
+from app.api import parser, rag, schedule, voice, auth, tasks, bot_feed, notify
 from app.ai.rag_service import init_rag
 from app.db.database import engine, Base
 
@@ -33,6 +33,8 @@ app.include_router(schedule.router, prefix="/api/schedule", tags=["schedule"])
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(bot_feed.router, prefix="/api/bot", tags=["bot-feed"])
+app.include_router(notify.router, prefix="/api/notify", tags=["notify"])
 
 @app.get("/ping")
 def ping():

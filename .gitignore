@@ -1,0 +1,30 @@
+# API Ключи и окружение
+.env
+.env.*
+*.env
+
+# Базы данных
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js
+node_modules/
+dist/
+build/
+.npm/
+
+# Папки Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Mac OS
+.DS_Store
+
+# Рабочие сессии бота
+.wwebjs_auth/
+.wwebjs_cache/
