@@ -8,13 +8,13 @@
   "description": "Автоматизация школьных процессов и делегирование задач",
   "icons": [
     {
-      "src": "/Gemini_Generated_Image_rx48q8rx48q8rx48.png",
+      "src": "/icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/Gemini_Generated_Image_rx48q8rx48q8rx48.png",
+      "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

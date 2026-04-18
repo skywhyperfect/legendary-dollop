@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Mic, Send, Paperclip, CheckCircle2, AlertTriangle, Info, BookOpen, Activity, Command, Lock, User, CheckCircle, Users, Calendar, Play, QrCode, Zap, Shield, Rocket, Sparkles, ChevronRight, Brain, MessageSquare, Clock, ArrowRight, Check, FileText, Search, Quote, Printer, X, Download, Menu, BarChart3, TrendingUp, Eye, EyeOff } from 'lucide-react';
 const API_BASE = `http://${window.location.hostname}:8000/api`;
-const pokoyoFinalLogo = '/Gemini_Generated_Image_rx48q8rx48q8rx48.png';
+const pokoyoFinalLogo = '/icon.png';
 
 const PocoyoBrandIcon = ({ className = "w-full h-full" }: { className?: string }) => (
   <img
     src={pokoyoFinalLogo}
     alt="Pokoyo AI"
-    className={`${className} object-contain drop-shadow-[0_12px_24px_rgba(37,99,235,0.18)]`}
+    className={`${className} object-cover rounded-3xl drop-shadow-[0_12px_24px_rgba(37,99,235,0.18)]`}
   />
 );
 
@@ -41,7 +41,7 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
             <div className="relative inline-block mb-4 pt-4">
               <div className="absolute -top-20 -left-6 w-40 h-40 pointer-events-none drop-shadow-2xl z-0">
                 <div className="w-full h-full animate-bounce-subtle">
-                   <PocoyoBrandIcon />
+                   <img src="/pocoyo_rest.png" alt="Покойо отдыхает" className="w-[160px] h-auto object-contain drop-shadow-2xl" />
                 </div>
               </div>
               <div className="inline-flex items-center space-x-2 bg-blue-50/80 backdrop-blur-sm border border-blue-100 px-4 py-2 rounded-full relative z-10 shadow-sm">
