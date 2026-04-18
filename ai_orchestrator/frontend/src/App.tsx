@@ -407,6 +407,62 @@ function TeacherScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+// --- TASK CARD COMPONENT (3-STAGE SYSTEM) ---
+function TaskCard({ task, idx, stage, onMarkDone }: { task: any, idx: number, stage: 'request' | 'progress' | 'completed', onMarkDone: (id: number) => void }) {
+  const urgencyMap: Record<string, string> = {
+    'Сегодня': 'bg-rose-50 text-rose-600 border-rose-100',
+    'Срочно': 'bg-rose-50 text-rose-600 border-rose-100',
+    'Завтра': 'bg-amber-50 text-amber-600 border-amber-100',
+    'Среда': 'bg-blue-50 text-blue-600 border-blue-100',
+    'Пятница': 'bg-blue-50 text-blue-600 border-blue-100',
+  };
+  const urgencyColor = urgencyMap[task.deadline] || 'bg-slate-50 text-slate-500 border-slate-100';
+  const initials = task.assignee?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '??';
+  const avatarColors: Record<string, string> = {
+    request: 'bg-amber-100 text-amber-600 border-amber-200',
+    progress: 'bg-blue-500 text-white shadow-lg shadow-blue-500/30',
+    completed: 'bg-slate-100 text-slate-400 grayscale'
+  };
+
+  return (
+    <div className={`group relative transition-all duration-500 ${stage === 'completed' ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+      <div className={`bg-white rounded-3xl p-5 flex items-center gap-5 border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all ${
+        stage === 'request' ? 'border-amber-100' : 
+        stage === 'progress' ? 'border-blue-100 shadow-blue-500/5' : 
+        'border-slate-100'
+      }`}>
+        {/* Avatar / Icon Section */}
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border-2 transition-all ${avatarColors[stage]}`}>
+           {stage === 'completed' ? <CheckCircle2 className="w-7 h-7" /> : initials}
+        </div>
+
+        {/* Content Section */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+             <div className={`font-black text-lg truncate ${stage === 'completed' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{task.title}</div>
+             {stage === 'request' && <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 animate-pulse">Ожидает подтверждения</span>}
+             {stage === 'progress' && <span className="text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">В работе</span>}
+          </div>
+          <div className="flex items-center gap-4 mt-1.5 overflow-hidden">
+             <span className="text-xs font-bold text-slate-400 flex items-center gap-1 shrink-0"><Users size={12} className="opacity-40" /> {task.assignee}</span>
+             <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border flex items-center gap-1 shrink-0 ${urgencyColor}`}><Clock size={10} /> {task.deadline}</span>
+          </div>
+        </div>
+
+        {/* Actions Section */}
+        {stage !== 'completed' && (
+          <button 
+            onClick={() => onMarkDone(task.id)}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-5 py-3 rounded-2xl shadow-xl transition-all active:scale-95 opacity-0 group-hover:opacity-100"
+          >
+            Завершить
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- MAIN DASHBOARD APP ---
 export default function App() {
   const [view, setView] = useState<'home' | 'auth' | 'app'>('home');
@@ -451,6 +507,7 @@ function Dashboard() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isGeneratingOrder, setIsGeneratingOrder] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>('');
   const [isDemoRunning, setIsDemoRunning] = useState(false);
 
   // Live Telegram feed
@@ -789,103 +846,68 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
       setIsRagLoading(false);
     }
   };
-
-  const mediaRecorderRef = useRef<any>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const handleMicClick = async () => {
-    // === СТОП: если уже записываем — останавливаем ===
+  const handleMicClick = () => {
     if (isRecording) {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-      return;
-    }
-    if (isTranscribing) return;
-
-    // Запрашиваем доступ к микрофону
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      alert("🎤 Доступ к микрофону заблокирован.\n\nОткройте http://localhost:5173 в Google Chrome и разрешите микрофон.");
-      return;
-    }
-
-    // Настраиваем MediaRecorder для записи реального аудио
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-    mediaRecorderRef.current = mediaRecorder;
-    audioChunksRef.current = [];
-
-    mediaRecorder.ondataavailable = (event: any) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
-    };
-
-    mediaRecorder.onstart = () => {
-      setIsRecording(true);
-      setInputVal('🎤 Запись идёт... говорите чётко');
-    };
-
-    mediaRecorder.onstop = async () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
       setIsRecording(false);
-      stream.getTracks().forEach(t => t.stop()); // Отключаем микрофон
+      return;
+    }
 
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      
-      if (audioBlob.size < 1000) {
-        setInputVal('');
-        return; // Слишком короткая запись
-      }
-
-      setIsTranscribing(true);
-      setInputVal('🧠 Whisper анализирует аудио...');
-
-      // Отправляем на бэкенд для Whisper-транскрипции
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'voice.webm');
-
-      try {
-        const res = await axios.post(`${API_BASE}/voice/transcribe`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-
-        if (res.data.transcript) {
-          // Whisper распознал! Показываем текст и отправляем на создание задач
-          const text = res.data.transcript;
-          setInputVal(text);
-          setTimeout(() => {
-            setInputVal('');
-            setIsTranscribing(false);
-            pushMessage(text, true);
-          }, 1000);
-        } else {
-          // Whisper недоступен — пробуем браузерный fallback
-          console.warn('Whisper unavailable, reason:', res.data.error);
-          setInputVal('');
-          setIsTranscribing(false);
-          fallbackBrowserSpeech(res.data.error || "Неизвестная ошибка бэкенда");
-        }
-      } catch (e: any) {
-        console.error('Whisper request failed:', e);
-        setInputVal('');
-        setIsTranscribing(false);
-        fallbackBrowserSpeech(e.message || "Network error");
-      }
-    };
-
-    mediaRecorder.start();
-  };
-
-  const fallbackBrowserSpeech = (errorReason: string = "") => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      const text = prompt("Введите текст задачи вручную:");
-      if (text && text.trim()) pushMessage(text.trim(), true);
+      alert("🎤 Ваше демо-устройство не поддерживает голосовой ввод. Пожалуйста, используйте Google Chrome.");
       return;
     }
-    alert(`⚠️ Ошибка Alem API: ${errorReason}\n\nНажмите микрофон ещё раз — будет использован браузерный (менее точный) распознаватель.`);
+
+    const recognition = new SR();
+    recognition.lang = 'ru-RU';
+    recognition.interimResults = true;
+    recognition.continuous = false; // Для демо лучше останавливать после фразы
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      setInputVal('🎤 Слушаю вас...');
+      transcriptRef.current = '';
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      transcriptRef.current = transcript;
+      setInputVal(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsRecording(false);
+      setInputVal('');
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      const finalVal = transcriptRef.current; 
+      if (finalVal && finalVal.trim()) {
+        setIsTranscribing(true);
+        setTimeout(() => {
+          setIsTranscribing(false);
+          pushMessage(finalVal, true);
+          setInputVal('');
+        }, 1200);
+      }
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+  };
+
+  const finishVoiceTask = (text: string) => {
+    setTimeout(() => {
+      setInputVal('');
+      setIsTranscribing(false);
+      pushMessage(text, true);
+    }, 1200);
   };
 
   return (
@@ -1207,80 +1229,64 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
                 </div>
               </div>
 
-              {/* Active tasks */}
-              {dbTasks.filter(t => !t.is_completed).length > 0 ? (
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span></span>
-                    <span className="font-black text-slate-600 uppercase tracking-widest text-xs">В работе — {dbTasks.filter(t => !t.is_completed).length} задач</span>
+              {/* --- 3-STAGE FEEDBACK SYSTEM --- */}
+              <div className="space-y-10">
+                {/* STAGE 1: REQUESTS (Non-accepted) */}
+                {dbTasks.filter(t => !t.is_accepted && !t.is_completed).length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></div>
+                      <span className="font-black text-slate-500 uppercase tracking-widest text-[10px]">Стадия 1: Запросы ({dbTasks.filter(t => !t.is_accepted && !t.is_completed).length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {dbTasks.filter(t => !t.is_accepted && !t.is_completed).map((t, idx) => (
+                        <TaskCard key={`req-${idx}`} task={t} idx={idx} stage="request" onMarkDone={markTaskDone} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    {dbTasks.filter(t => !t.is_completed).map((t, idx) => {
-                      const urgencyMap: Record<string, string> = {
-                        'Сегодня': 'bg-rose-50 text-rose-600 border-rose-100',
-                        'Срочно': 'bg-rose-50 text-rose-600 border-rose-100',
-                        'Завтра': 'bg-amber-50 text-amber-600 border-amber-100',
-                        'До среды': 'bg-blue-50 text-blue-600 border-blue-100',
-                        'Пятница': 'bg-blue-50 text-blue-600 border-blue-100',
-                      };
-                      const urgencyColor = urgencyMap[t.deadline] || 'bg-slate-50 text-slate-500 border-slate-100';
-                      const initials = t.assignee?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '??';
-                      const avatarColors = ['bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
-                      const avatarColor = avatarColors[idx % avatarColors.length];
-                      return (
-                        <div key={idx} className="group bg-white rounded-3xl shadow-md border border-slate-100 p-5 flex items-center gap-5 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                          <div className={`w-12 h-12 ${avatarColor} rounded-2xl flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md`}>{initials}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3">
-                              <div className="font-extrabold text-slate-800 text-base">{t.title}</div>
-                              {t.is_accepted && (
-                                <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-blue-200">
-                                  <Check className="w-3 h-3" /> Принято
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                              <span className="text-xs font-bold text-slate-400">{t.assignee}</span>
-                              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border ${urgencyColor}`}>📅 {t.deadline}</span>
-                            </div>
-                          </div>
-                          <button onClick={() => markTaskDone(t.id)}
-                            className="shrink-0 flex items-center gap-2 bg-slate-900 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest px-5 py-2.5 rounded-2xl shadow-md transition-all active:scale-95 opacity-0 group-hover:opacity-100">
-                            <Check className="w-3.5 h-3.5" /> Готово
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center">
-                  <div className="w-16 h-16 bg-emerald-50 rounded-3xl flex items-center justify-center mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                  </div>
-                  <div className="font-black text-xl text-slate-700 mb-2">Все задачи выполнены! 🎉</div>
-                  <div className="text-slate-400 text-sm">Нажмите на микрофон и продиктуйте новые поручения</div>
-                </div>
-              )}
+                )}
 
-              {/* Completed */}
-              {dbTasks.filter(t => t.is_completed).length > 0 && (
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="font-black text-slate-400 uppercase tracking-widest text-xs">Выполнено — {dbTasks.filter(t => t.is_completed).length}</span>
+                {/* STAGE 2: IN PROGRESS (Accepted) */}
+                {dbTasks.filter(t => t.is_accepted && !t.is_completed).length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                      <span className="font-black text-slate-500 uppercase tracking-widest text-[10px]">Стадия 2: В обработке ({dbTasks.filter(t => t.is_accepted && !t.is_completed).length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {dbTasks.filter(t => t.is_accepted && !t.is_completed).map((t, idx) => (
+                        <TaskCard key={`prog-${idx}`} task={t} idx={idx} stage="progress" onMarkDone={markTaskDone} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {dbTasks.filter(t => t.is_completed).map((t, idx) => (
-                      <div key={`done-${idx}`} className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100 flex items-center gap-4 opacity-50">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                        <span className="font-bold text-slate-400 line-through text-sm flex-1">{t.title}</span>
-                        <span className="text-xs text-slate-400">{t.assignee}</span>
-                      </div>
-                    ))}
+                )}
+
+                {/* STAGE 3: COMPLETED */}
+                {dbTasks.filter(t => t.is_completed).length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                      <span className="font-black text-slate-500 uppercase tracking-widest text-[10px]">Стадия 3: Выполнено ({dbTasks.filter(t => t.is_completed).length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {dbTasks.filter(t => t.is_completed).map((t, idx) => (
+                        <TaskCard key={`done-${idx}`} task={t} idx={idx} stage="completed" onMarkDone={markTaskDone} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {dbTasks.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-3xl flex items-center justify-center mb-4">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                    </div>
+                    <div className="font-black text-xl text-slate-700 mb-2">Задач пока нет</div>
+                    <div className="text-slate-400 text-sm">Продиктуйте распоряжение через микрофон</div>
+                  </div>
+                )}
+              </div>
+
 
             </div>
           )}
@@ -1771,6 +1777,9 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
                   <div className="text-8xl font-black opacity-20">24×</div>
                 </div>
               </div>
+
+              {/* AI PDF Report Button */}
+              <GenerateReportButton />
             </div>
           )}
 
@@ -1911,6 +1920,63 @@ const [dbTasks, setDbTasks] = useState<any[]>([]);
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function GenerateReportButton() {
+  const [loading, setLoading] = React.useState(false);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/analytics/report`);
+      const html: string = res.data.html;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const tab = window.open(url, '_blank');
+      if (!tab) {
+        // popup blocked — скачиваем файлом
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Otchet_Pokoyo_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.html`;
+        link.click();
+      }
+    } catch (e) {
+      alert('Ошибка генерации отчёта. Проверьте, что бэкенд запущен.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div className="flex items-center gap-5">
+        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+          <FileText size={30} />
+        </div>
+        <div>
+          <div className="font-black text-xl text-slate-800">AI-Отчёт для директора</div>
+          <div className="text-slate-500 font-medium mt-1 text-sm">
+            Покойо соберёт данные за неделю, напишет аналитику и сформирует PDF-документ для печати.
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shrink-0 ${
+          loading
+            ? 'bg-slate-100 text-slate-400 cursor-wait'
+            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30 hover:-translate-y-0.5'
+        }`}
+      >
+        {loading ? (
+          <><div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />AI генерирует...</>
+        ) : (
+          <><Download size={18} />Скачать отчёт PDF</>
+        )}
+      </button>
     </div>
   );
 }

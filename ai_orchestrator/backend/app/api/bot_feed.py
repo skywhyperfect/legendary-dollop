@@ -9,11 +9,12 @@ from datetime import datetime
 
 router = APIRouter()
 
-# Ищем orchestrator.db: сначала рядом с main.py (в backend/), потом в backend/app/
-_backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ищем orchestrator.db в корне папки backend
+_api_dir = os.path.dirname(os.path.abspath(__file__))
+_app_dir = os.path.dirname(_api_dir)
+_backend_dir = os.path.dirname(_app_dir)
 DB_PATH = os.path.join(_backend_dir, "orchestrator.db")
-if not os.path.exists(DB_PATH):
-    DB_PATH = os.path.join(_backend_dir, "..", "orchestrator.db")
+
 
 
 def _get_conn():
@@ -44,6 +45,23 @@ def _ensure_table():
             )
         """)
         conn.commit()
+
+        # Авто-миграции: добавляем колонки, которые могут отсутствовать в старой БД
+        for col, col_type in [
+            ("chat_id", "INTEGER"),
+            ("parsed_type", "TEXT"),
+            ("parsed_summary", "TEXT"),
+            ("food_class", "TEXT"),
+            ("food_count", "INTEGER"),
+            ("location", "TEXT"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE tg_messages ADD COLUMN {col} {col_type}")
+                conn.commit()
+                print(f"✅ Миграция: добавлена колонка tg_messages.{col}")
+            except Exception:
+                pass  # Колонка уже существует — это нормально
+
         conn.close()
     except Exception:
         pass
@@ -65,6 +83,14 @@ def _extract_food_info(text):
     food_count = int(count_match.group(1)) if count_match else None
     return food_class, food_count
 
+def _extract_location(text):
+    """Извлекает номер кабинета/локацию из текста."""
+    # Ищем паттерны: "в 201 кабинете", "каб. 302", "кабинет 12", "на 3 этаже"
+    match = re.search(r"(?:каб(?:\.|инет)?|кабинете|офисе|этаж[еа]?)\s*(\d+[А-Яа-я]?)|(?:в|на)\s+(\d{2,3})\s*(?:каб|кабинет|офис|аудитор|класс|этаж)", text, re.IGNORECASE)
+    if match:
+        return (match.group(1) or match.group(2)).strip()
+    return None
+
 def _local_classify(text):
     t = text.lower()
     food_class, food_count = _extract_food_info(text)
@@ -72,9 +98,24 @@ def _local_classify(text):
         return "food", f"Явка: {food_count or '?'} чел." + (f" ({food_class})" if food_class else ""), food_class, food_count
     if any(w in t for w in ["заболел", "болеет", "не придёт", "не придет", "нетрудоспособ"]):
         return "absence", f"Отсутствие, требуется замена: {text[:60]}", None, None
-    if any(w in t for w in ["сломал", "поломка", "не работает", "протечка", "авария", "драка", "конфликт"]):
+    # Медицинский случай (приоритет выше обычного инцидента)
+    if any(w in t for w in ["плохо", "упал", "упала", "без сознания", "рвота", "температура", "травм", "скорую", "медик"]):
+        return "medical", f"🚑 Медицинский случай: {text[:80]}", None, None
+    if any(w in t for w in ["сломал", "поломка", "не работает", "протечка", "авария", "драка", "конфликт", "принтер", "проектор"]):
         return "incident", f"Инцидент: {text[:80]}", None, None
     return "other", text[:100], None, None
+
+def _send_wa_reply(chat_id: str, text: str):
+    """Отправляет авто-ответ в WhatsApp через локальный bridge (порт 3000)."""
+    import urllib.request, json
+    try:
+        payload = json.dumps({"chatId": chat_id, "text": text}).encode('utf-8')
+        req = urllib.request.Request("http://localhost:3000/send", data=payload, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req, timeout=2):
+            pass
+    except Exception as e:
+        print(f"[AutoReply] Не удалось отправить: {e}")
 
 # Global state for WA authentication
 wa_auth_state = {
@@ -105,28 +146,45 @@ def whatsapp_webhook(req: WhatsAppWebhookReq):
     """Принимает сообщения от реального WhatsApp и вставляет в ту же базу."""
     _ensure_table()
     mtype, summary, food_class, food_count = _local_classify(req.text)
+    location = _extract_location(req.text)
+
     # ─── ЛОГИКА ПОДТВЕРЖДЕНИЯ (Acceptance) ───
-    confirm_keywords = ["принял", "оке", "ок", "готов", "сделаю", "хорошо", "+"]
-    is_confirmation = any(k in req.text.lower() for k in confirm_keywords)
+    confirm_keywords = ["принял", "оке", "ок", "готов", "сделаю", "хорошо", "+", "понял", "взял", "поняла", "взяла", "оки"]
+    is_confirmation = any(k == req.text.lower().strip() or f" {k} " in f" {req.text.lower()} " for k in confirm_keywords)
     
     try:
         conn = _get_conn()
         
-        # 1. Сохраняем в лог (как и раньше)
+        # 1. Сохраняем в лог
         conn.execute(
             """INSERT INTO tg_messages 
-               (chat_id, sender, text, parsed_type, parsed_summary, food_class, food_count) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (req.chatId, req.sender, f"[WA] {req.text}", mtype, summary, food_class, food_count)
+               (chat_id, sender, text, parsed_type, parsed_summary, food_class, food_count, location) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (req.chatId, req.sender, f"[WA] {req.text}", mtype, summary, food_class, food_count, location)
         )
+
+        # 2. Авто-ответ для инцидентов и медицинских случаев
+        if mtype == "medical":
+            loc_str = f" (каб. {location})" if location else ""
+            reply = (
+                f"🚑 *Медицинский случай зафиксирован{loc_str}!*\n"
+                f"Описание: {req.text[:80]}\n"
+                f"📌 Дашборд уведомлён. Вызовите медработника!"
+            )
+            _send_wa_reply(req.chatId, reply)
+        elif mtype == "incident":
+            loc_str = f" ({location})" if location else ""
+            reply = (
+                f"🔧 *Aqbobek AI: Инцидент зафиксирован{loc_str}!*\n"
+                f"{summary}\n"
+                f"Назначен: Завхоз.\nОжидайте, специалист уже в пути."
+            )
+            _send_wa_reply(req.chatId, reply)
         
-        # 2. Если это подтверждение — ищем последнюю задачу для этого отправителя
+        # 3. Если это подтверждение — ищем задачу
         if is_confirmation:
-            # Ищем задачу, где имя отправителя (req.sender) частично совпадает с assignee
-            # Например, Ахмед (sender) -> Ахмед (assignee)
             search_sender = f"%{req.sender}%"
-            # Также попробуем наоборот: если в тексте assignee есть имя отправителя или наоборот
-            conn.execute(
+            cursor = conn.execute(
                 """UPDATE task_reminders 
                    SET is_accepted = 1 
                    WHERE is_completed = 0 AND is_accepted = 0 
@@ -139,7 +197,23 @@ def whatsapp_webhook(req: WhatsAppWebhookReq):
                    )""",
                 (search_sender, req.sender, search_sender, req.sender)
             )
-            print(f"✅ Задача для {req.sender} помечена как Принятая.")
+            if cursor.rowcount == 0:
+                conn.execute(
+                    """UPDATE task_reminders 
+                       SET is_accepted = 1, assignee = ? 
+                       WHERE is_completed = 0 AND is_accepted = 0 
+                       AND (assignee LIKE '%Нераспознанный%' OR assignee LIKE '%Неизвестно%' OR assignee = '')
+                       AND id = (
+                           SELECT id FROM task_reminders 
+                           WHERE is_completed = 0 AND is_accepted = 0 
+                           AND (assignee LIKE '%Нераспознанный%' OR assignee LIKE '%Неизвестно%' OR assignee = '')
+                           ORDER BY id DESC LIMIT 1
+                       )""",
+                    (req.sender,)
+                )
+                print(f"✨ Задача самоназначена на {req.sender} (была нераспознана).")
+            else:
+                print(f"✅ Задача для {req.sender} помечена как Принятая.")
 
         conn.commit()
         conn.close()

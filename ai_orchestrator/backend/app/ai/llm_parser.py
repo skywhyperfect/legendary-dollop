@@ -18,6 +18,8 @@ class ParsedMessage(BaseModel):
     entities: List[str] = Field(description="Имена упомянутых учителей или учеников (например: 'Иванов', 'Смирнова')")
     rag_insights: Optional[dict] = Field(default=None, description="Инструкции и чек-листы из приказов (если применимо)")
     substitution_plan: Optional[list] = Field(default=None, description="План замен, если учитель заболел")
+    is_acceptance: bool = Field(default=False, description="True, если сообщение является подтверждением/принятием задачи (Ок, Принял, Хорошо)")
+
 
 def parse_with_llm(text: str) -> ParsedMessage:
     if openai.api_key == "mock" or openai.api_key == "test_mock":
@@ -41,13 +43,14 @@ def parse_with_llm(text: str) -> ParsedMessage:
                 }
             parsed.rag_insights = rag_info
             
-        # Интеграция со Smart Substitutions при болезни учителя
-        if parsed.type == "absence":
-            # Берем первое упомянутое имя для поиска замены. Для MVP подойдет.
-            absent_teacher = parsed.entities[0] if parsed.entities else "Аскар"
-            parsed.substitution_plan = find_substitution(absent_teacher)
+        # Детектор подтверждения (Ок, Принял, Сделаю)
+        acc_keywords = ["ок", "ok", "принял", "хорошо", "будет сделано", "сделаю", "понял", "сделаем"]
+        if any(w in text.lower() for w in acc_keywords):
+            parsed.is_acceptance = True
+            parsed.summary = "✅ Подтверждение задачи"
             
         return parsed
+
     
     try:
         response = openai.chat.completions.create(

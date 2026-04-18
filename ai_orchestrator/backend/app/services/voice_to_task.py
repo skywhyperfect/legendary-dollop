@@ -34,14 +34,12 @@ def process_voice_command(test_text: str = None, file_path: str = None) -> TaskD
     substitution = general_parse.dict().get("substitution_plan") if general_parse.type == "absence" else None
     
     # 2. Вытаскиваем задачи через отдельный Function Call
-    alem_key = os.getenv("ALEM_STT_API_KEY", "")
-        
     try:
-        # Пробуем использовать прокси Alem для LLM задачи
-        if alem_key and alem_key != "mock" and alem_key.strip():
-            client = openai.OpenAI(api_key=alem_key, base_url="https://llm.alem.ai/v1")
+        # Пробуем использовать OpenAI API для LLM задачи
+        if api_key and api_key != "mock" and api_key.strip() and len(api_key) > 10:
+            client = openai.OpenAI(api_key=api_key)
             
-            # ПЕРВАЯ ПОПЫТКА: Через Function Calling (самый надежный способ если прокси тянет)
+            # ПЕРВАЯ ПОПЫТКА: Через Function Calling
             try:
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
@@ -61,7 +59,7 @@ def process_voice_command(test_text: str = None, file_path: str = None) -> TaskD
                 )
                 data = json.loads(response.choices[0].message.function_call.arguments)
             except Exception as fe:
-                print(f"Function call failed, trying direct JSON: {fe}")
+                print(f"Function call failed, trying direct JSON (silent mode)")
                 # ВТОРАЯ ПОПЫТКА: Обычный JSON-промпт (если прокси не поддерживает функции)
                 prompt = f"""
                 Разбей текст на задачи в формате JSON.
