@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Response, Body
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 import pandas as pd
 import os
@@ -9,13 +9,35 @@ import tempfile
 from app.services.scheduler import find_substitution
 from app.services.legal_generator import generate_substitution_order
 from app.services.pdf_service import create_order_html
-from app.data_loader import load_staff, load_schedule
-from app.services.generator import generate_weekly_schedule
+from app.data_loader import load_staff, load_schedule 
+from app.services.generator import generate_weekly_schedule, generate_all_staff_schedules
 
 router = APIRouter()
 
+class ClassLoadConstraint(BaseModel):
+    class_name: str
+    subject_hours: Dict[str, int]
+
+class TeacherConstraint(BaseModel):
+    teacher_name: str
+    max_hours: Optional[int] = None
+    subjects: Optional[List[str]] = None
+    unavailable: Optional[List[Dict[str, int]]] = None
+
+class RoomConstraint(BaseModel):
+    room_name: str
+    capacity: Optional[int] = None
+    types: Optional[List[str]] = None
+    unavailable: Optional[List[Dict[str, int]]] = None
+
+class ScheduleConstraints(BaseModel):
+    class_load: Optional[List[ClassLoadConstraint]] = None
+    teacher_constraints: Optional[List[TeacherConstraint]] = None
+    room_constraints: Optional[List[RoomConstraint]] = None
+
 class ScheduleTarget(BaseModel):
     classes: Optional[List[str]] = None
+    constraints: Optional[ScheduleConstraints] = None
 
 import re
 from openpyxl.styles import Alignment, PatternFill, Font
@@ -104,11 +126,21 @@ async def export_excel(data: ScheduleExportData):
 async def api_generate_schedule(target: ScheduleTarget):
     """
     Генерирует расписание на неделю с нуля.
-    Классы передаются в body: {"classes": ["1А", "5Б"]}.
+    Классы передаются в body: {"classes": ["1А", "5Б"], "constraints": {...}}.
     Результат возвращается в виде JSON-списка.
     """
-    schedule = generate_weekly_schedule(target.classes)
+    schedule = generate_weekly_schedule(target.classes, target.constraints.dict() if target.constraints else None)
     return {"status": "success", "total_slots": len(schedule), "schedule": schedule}
+
+@router.get("/staff-schedule")
+async def api_get_staff_schedule():
+    """
+    Возвращает персонализированное расписание для администрации и техперсонала.
+    Включает задачи, спарсенные из WhatsApp.
+    """
+    from app.services.generator import generate_staff_schedule
+    staff_sched = generate_staff_schedule()
+    return {"status": "success", "schedule": staff_sched}
 
 @router.get("/teacher-profile")
 async def get_teacher_profile(teacher_name: str = "Иванова И. И."):
