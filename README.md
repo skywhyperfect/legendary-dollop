@@ -1,3 +1,5 @@
+## 🏆 AIS Hack 3.0 — Победители
+📰 [Статья о нас на сайте НИШ Туркестан](https://schools.nis.edu.kz/ru/school/nzm-turkistan/news/2167)
 # 🚀 Покойо (AI School Orchestrator)
 ### Интеллектуальное управление школой без смены привычек (AIS Hack 3.0)
 
